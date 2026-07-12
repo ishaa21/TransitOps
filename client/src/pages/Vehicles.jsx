@@ -25,7 +25,7 @@ const STATUS_STYLES = {
   Available:  'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   OnTrip:     'bg-blue-500/10   text-blue-400   border-blue-500/20',
   InShop:     'bg-amber-500/10  text-amber-400  border-amber-500/20',
-  Retired:    'bg-gray-500/10   text-gray-400   border-gray-500/20',
+  Retired:    'bg-red-500/10    text-red-400    border-red-500/20',
 }
 
 const TYPE_ICON = {
@@ -397,7 +397,7 @@ export default function Vehicles() {
         <SummaryCard label="Available" value={counts.Available  || 0}   color="text-emerald-400" />
         <SummaryCard label="On Trip"   value={counts.OnTrip     || 0}   color="text-blue-400" />
         <SummaryCard label="In Shop"   value={counts.InShop     || 0}   color="text-amber-400" />
-        <SummaryCard label="Retired"   value={counts.Retired    || 0}   color="text-gray-400" />
+        <SummaryCard label="Retired"   value={counts.Retired    || 0}   color="text-red-400" />
       </div>
 
       {/* ── Filters ── */}
