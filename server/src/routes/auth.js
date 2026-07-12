@@ -1,11 +1,10 @@
 const express = require('express')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
-const { PrismaClient } = require('@prisma/client')
+const prisma = require('../prisma')
 const { isValidRole } = require('../constants/roles')
 
 const router = express.Router()
-const prisma = new PrismaClient()
 
 const SALT_ROUNDS = 10
 

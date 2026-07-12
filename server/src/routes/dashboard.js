@@ -1,10 +1,9 @@
 const express = require('express')
-const { PrismaClient } = require('@prisma/client')
+const prisma = require('../prisma')
 const authMiddleware = require('../middleware/authMiddleware')
 const { buildVehicleWhere, hasVehicleFilters } = require('../utils/vehicleFilters')
 
 const router = express.Router()
-const prisma = new PrismaClient()
 
 const VEHICLE_STATUSES = ['Available', 'OnTrip', 'InShop', 'Retired']
 

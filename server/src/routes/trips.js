@@ -1,9 +1,8 @@
 const express = require('express')
-const { PrismaClient } = require('@prisma/client')
+const prisma = require('../prisma')
 const authMiddleware = require('../middleware/authMiddleware')
 
 const router = express.Router()
-const prisma = new PrismaClient()
 
 // GET /api/trips - Fetch all trips with vehicle/driver names resolved
 router.get('/', authMiddleware, async (req, res) => {

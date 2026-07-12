@@ -1,9 +1,8 @@
 const express = require('express')
-const { PrismaClient } = require('@prisma/client')
+const prisma = require('../prisma')
 const authMiddleware = require('../middleware/authMiddleware')
 
 const router = express.Router()
-const prisma = new PrismaClient()
 
 // GET /api/vehicles - Fetch all vehicles (protected)
 router.get('/', authMiddleware, async (req, res) => {
