@@ -7,7 +7,7 @@ const router = express.Router()
 
 // ─── GET /api/maintenance ─────────────────────────────────────────────────────
 // Fetch all maintenance logs, enriched with vehicle reg/name (protected)
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', authMiddleware, requireRole('FleetManager'), async (req, res) => {
   try {
     const logs = await prisma.maintenanceLog.findMany({
       orderBy: { date: 'desc' },

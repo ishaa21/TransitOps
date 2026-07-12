@@ -6,7 +6,7 @@ const requireRole = require('../middleware/requireRole')
 const router = express.Router()
 
 // GET /api/drivers - Fetch all drivers (protected)
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', authMiddleware, requireRole('SafetyOfficer', 'Dispatcher', 'FinancialAnalyst'), async (req, res) => {
   try {
     const drivers = await prisma.driver.findMany()
     return res.json(drivers)
@@ -17,7 +17,7 @@ router.get('/', authMiddleware, async (req, res) => {
 })
 
 // POST /api/drivers - Create a driver (write restricted)
-router.post('/', authMiddleware, requireRole('SafetyOfficer', 'FleetManager'), async (req, res) => {
+router.post('/', authMiddleware, requireRole('SafetyOfficer'), async (req, res) => {
   const { name, licenseNo, licenseCategory, licenseExpiry, contact, safetyScore, status } = req.body
 
   if (!name || !licenseNo || !licenseCategory || !licenseExpiry || !contact || safetyScore === undefined) {
@@ -54,7 +54,7 @@ router.post('/', authMiddleware, requireRole('SafetyOfficer', 'FleetManager'), a
 })
 
 // PUT /api/drivers/:id - Update a driver (write restricted)
-router.put('/:id', authMiddleware, requireRole('SafetyOfficer', 'FleetManager'), async (req, res) => {
+router.put('/:id', authMiddleware, requireRole('SafetyOfficer'), async (req, res) => {
   const { id } = req.params
   const { name, licenseNo, licenseCategory, licenseExpiry, contact, safetyScore, status } = req.body
 
@@ -101,7 +101,7 @@ router.put('/:id', authMiddleware, requireRole('SafetyOfficer', 'FleetManager'),
 })
 
 // DELETE /api/drivers/:id - Delete a driver (write restricted)
-router.delete('/:id', authMiddleware, requireRole('SafetyOfficer', 'FleetManager'), async (req, res) => {
+router.delete('/:id', authMiddleware, requireRole('SafetyOfficer'), async (req, res) => {
   const { id } = req.params
 
   const driverId = parseInt(id, 10)

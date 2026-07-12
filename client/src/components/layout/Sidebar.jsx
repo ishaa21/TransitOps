@@ -1,17 +1,26 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 
 const navItems = [
-  { label: 'Dashboard', to: '/dashboard', icon: '▣' },
-  { label: 'Fleet', to: '/vehicles', icon: '⛟' },
-  { label: 'Drivers', to: '/drivers', icon: '◎' },
-  { label: 'Trips', to: '/trips', icon: '↗' },
-  { label: 'Maintenance', to: '/maintenance', icon: '⚙' },
-  { label: 'Fuel & Expenses', to: '/fuel-expenses', icon: '⛽' },
-  { label: 'Analytics', to: '/reports', icon: '▤' },
-  { label: 'Settings', to: '/settings', icon: '⚙' },
+  { label: 'Dashboard', to: '/dashboard', icon: '▣', roles: ['dispatcher'] },
+  { label: 'Fleet', to: '/vehicles', icon: '⛟', roles: ['fleetmanager', 'fleet_manager'] },
+  { label: 'Drivers', to: '/drivers', icon: '◎', roles: ['safetyofficer', 'safety_officer'] },
+  { label: 'Trips', to: '/trips', icon: '↗', roles: ['dispatcher', 'safetyofficer', 'safety_officer', 'financialanalyst', 'financial_analyst'] },
+  { label: 'Maintenance', to: '/maintenance', icon: '⚙', roles: ['fleetmanager', 'fleet_manager'] },
+  { label: 'Fuel & Expenses', to: '/fuel-expenses', icon: '⛽', roles: ['financialanalyst', 'financial_analyst'] },
+  { label: 'Analytics', to: '/reports', icon: '▤', roles: ['financialanalyst', 'financial_analyst'] },
+  { label: 'Settings', to: '/settings', icon: '⚙', roles: ['*'] },
 ]
 
 export default function Sidebar() {
+  const { user } = useAuth()
+  const userRole = (user?.role || '').toLowerCase().replace(/_/g, '')
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.roles.includes('*')) return true
+    return item.roles.some((r) => r.toLowerCase().replace(/_/g, '') === userRole)
+  })
+
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-transit-dark-border bg-transit-dark-elevated">
       <div className="border-b border-transit-dark-border px-6 py-5">
@@ -27,7 +36,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {navItems.map((item) => (
+        {filteredNavItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

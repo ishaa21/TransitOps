@@ -1,6 +1,7 @@
 const express = require('express')
 const prisma = require('../prisma')
 const authMiddleware = require('../middleware/authMiddleware')
+const requireRole = require('../middleware/requireRole')
 
 const router = express.Router()
 
@@ -30,7 +31,7 @@ async function resolveTripMap(ids) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/fuel-logs
-router.get('/fuel-logs', authMiddleware, async (req, res) => {
+router.get('/fuel-logs', authMiddleware, requireRole('FinancialAnalyst'), async (req, res) => {
   try {
     const logs = await prisma.fuelLog.findMany({ orderBy: { date: 'desc' } })
 
@@ -51,7 +52,7 @@ router.get('/fuel-logs', authMiddleware, async (req, res) => {
 })
 
 // POST /api/fuel-logs
-router.post('/fuel-logs', authMiddleware, async (req, res) => {
+router.post('/fuel-logs', authMiddleware, requireRole('FinancialAnalyst'), async (req, res) => {
   const { vehicleId, liters, cost, date } = req.body
 
   if (!vehicleId || liters === undefined || cost === undefined || !date) {
@@ -90,7 +91,7 @@ router.post('/fuel-logs', authMiddleware, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/expenses
-router.get('/expenses', authMiddleware, async (req, res) => {
+router.get('/expenses', authMiddleware, requireRole('FinancialAnalyst'), async (req, res) => {
   try {
     const expenses = await prisma.expense.findMany({ orderBy: { date: 'desc' } })
 
@@ -120,7 +121,7 @@ router.get('/expenses', authMiddleware, async (req, res) => {
 })
 
 // POST /api/expenses
-router.post('/expenses', authMiddleware, async (req, res) => {
+router.post('/expenses', authMiddleware, requireRole('FinancialAnalyst'), async (req, res) => {
   const { vehicleId, tripId, toll, misc, date } = req.body
 
   if (!vehicleId || toll === undefined || misc === undefined || !date) {
@@ -175,7 +176,7 @@ router.post('/expenses', authMiddleware, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/vehicles/:id/operational-cost
-router.get('/vehicles/:id/operational-cost', authMiddleware, async (req, res) => {
+router.get('/vehicles/:id/operational-cost', authMiddleware, requireRole('FinancialAnalyst'), async (req, res) => {
   const vid = parseInt(req.params.id, 10)
   if (isNaN(vid)) return res.status(400).json({ message: 'Invalid vehicle ID' })
 
@@ -219,7 +220,7 @@ router.get('/vehicles/:id/operational-cost', authMiddleware, async (req, res) =>
 })
 
 // GET /api/vehicles/operational-cost  (all vehicles summary)
-router.get('/vehicles/operational-cost', authMiddleware, async (req, res) => {
+router.get('/vehicles/operational-cost', authMiddleware, requireRole('FinancialAnalyst'), async (req, res) => {
   try {
     const vehicles = await prisma.vehicle.findMany({ orderBy: { id: 'asc' } })
 
