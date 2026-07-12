@@ -19,4 +19,11 @@ const buildVehicleWhere = ({ vehicleType, status, region }) => {
 const hasVehicleFilters = (query) =>
   Boolean(query.vehicleType || query.status || query.region)
 
-module.exports = { buildVehicleWhere, hasVehicleFilters }
+const matchesVehicleFilters = (vehicle, { vehicleType, status, region }) => {
+  if (vehicleType && vehicle.type !== vehicleType) return false
+  if (status && vehicle.status !== status) return false
+  if (region && !vehicle.regNo.startsWith(`${region}-`)) return false
+  return true
+}
+
+module.exports = { buildVehicleWhere, hasVehicleFilters, matchesVehicleFilters }

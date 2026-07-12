@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { hasRole } from '../constants/roles'
+import AccessDenied from '../components/AccessDenied'
 import { fetchAnalyticsData } from '../services/reportsService'
 import {
   ResponsiveContainer,
@@ -13,10 +15,7 @@ import {
 
 export default function Reports() {
   const { user } = useAuth()
-  const isAuthorized =
-    user?.role === 'FinancialAnalyst' ||
-    user?.role?.toLowerCase() === 'financialanalyst' ||
-    user?.role?.toLowerCase() === 'financial_analyst'
+  const isAuthorized = hasRole(user, 'financial_analyst', 'FinancialAnalyst')
 
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -104,19 +103,11 @@ export default function Reports() {
 
   if (!isAuthorized) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center text-center p-6">
-        <div className="rounded-2xl border border-transit-dark-border bg-transit-dark-elevated p-8 max-w-md shadow-xl">
-          <span className="text-5xl block mb-4">🔒</span>
-          <h2 className="text-xl font-bold text-white mb-2">Access Restricted</h2>
-          <p className="text-sm text-gray-400 leading-relaxed mb-6">
-            The Reports & Analytics dashboard is reserved exclusively for users with the{' '}
-            <span className="font-semibold text-transit-orange">Financial Analyst</span> role.
-          </p>
-          <div className="text-xs text-gray-500 bg-transit-dark/40 py-2 px-4 rounded-lg border border-transit-dark-border inline-block">
-            Your Current Role: <span className="font-mono text-gray-300">{user?.role || 'Guest'}</span>
-          </div>
-        </div>
-      </div>
+      <AccessDenied
+        moduleName="The Reports & Analytics dashboard"
+        requiredRole="Financial Analyst"
+        userRole={user?.role}
+      />
     )
   }
 

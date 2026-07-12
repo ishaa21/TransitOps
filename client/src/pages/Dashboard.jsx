@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { hasRole } from '../constants/roles'
+import AccessDenied from '../components/AccessDenied'
 import { fetchDashboardKpis } from '../services/dashboardService'
 
 /* ─── KPI configuration ───────────────────────────────────────────────────── */
@@ -467,6 +470,9 @@ function TripsTableSkeleton() {
 /* ─── Main Dashboard ────────────────────────────────────────────────────────── */
 
 export default function Dashboard() {
+  const { user } = useAuth()
+  const isAuthorized = hasRole(user, 'dispatcher', 'Dispatcher')
+
   const [filters, setFilters] = useState({ vehicleType: '', status: '', region: '' })
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -488,13 +494,16 @@ export default function Dashboard() {
   }, [filters])
 
   useEffect(() => {
+    if (!isAuthorized) {
+      setLoading(false)
+      return undefined
+    }
+
     loadDashboard()
 
-    // Re-fetch when the window gains focus
     const handleFocus = () => loadDashboard()
     window.addEventListener('focus', handleFocus)
 
-    // Re-fetch periodically every 10 seconds (polling)
     const interval = setInterval(() => {
       loadDashboard()
     }, 10000)
@@ -503,7 +512,7 @@ export default function Dashboard() {
       window.removeEventListener('focus', handleFocus)
       clearInterval(interval)
     }
-  }, [loadDashboard])
+  }, [isAuthorized, loadDashboard])
 
   const filterOptions = useMemo(
     () => ({
@@ -518,6 +527,16 @@ export default function Dashboard() {
     setFilters((prev) => ({ ...prev, [key]: value }))
 
   const hasActiveFilters = Object.values(filters).some(Boolean)
+
+  if (!isAuthorized) {
+    return (
+      <AccessDenied
+        moduleName="The Fleet Dashboard"
+        requiredRole="Dispatcher"
+        userRole={user?.role}
+      />
+    )
+  }
 
   return (
     <>

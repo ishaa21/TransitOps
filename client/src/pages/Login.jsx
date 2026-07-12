@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { ROLES, ROLE_ACCESS } from '../constants/roles'
+import { ROLES, ROLE_ACCESS, getHomeRouteForRole } from '../constants/roles'
 
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated, login, loading } = useAuth()
+  const { isAuthenticated, login, loading, user } = useAuth()
 
   const [email, setEmail] = useState('raven.k@transitops.in')
   const [password, setPassword] = useState('')
@@ -14,10 +14,10 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState('')
 
-  const from = location.state?.from?.pathname ?? '/dashboard'
+  const from = location.state?.from?.pathname
 
   if (isAuthenticated) {
-    return <Navigate to={from} replace />
+    return <Navigate to={from ?? getHomeRouteForRole(user?.role)} replace />
   }
 
   const handleSubmit = async (event) => {
@@ -25,8 +25,8 @@ export default function Login() {
     setError('')
 
     try {
-      await login({ email, password, role })
-      navigate(from, { replace: true })
+      const data = await login({ email, password, role })
+      navigate(from ?? getHomeRouteForRole(data.user.role), { replace: true })
     } catch (err) {
       const message =
         err.response?.data?.message ??

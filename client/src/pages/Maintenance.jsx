@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { hasRole } from '../constants/roles'
+import AccessDenied from '../components/AccessDenied'
 import { getVehicles } from '../services/vehicleService'
 import {
   getMaintenanceLogs,
@@ -79,7 +81,8 @@ export default function Maintenance() {
   // Complete confirmation
   const [completingId, setCompletingId] = useState(null)
 
-  const canWrite = user?.role === 'fleet_manager' || user?.role === 'FleetManager'
+  const canWrite = hasRole(user, 'fleet_manager', 'FleetManager')
+  const isAuthorized = canWrite
 
   // ── Fetch ────────────────────────────────────────────────────────────────────
   const fetchAll = async () => {
@@ -100,7 +103,10 @@ export default function Maintenance() {
     }
   }
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => {
+    if (isAuthorized) fetchAll()
+    else setLoading(false)
+  }, [isAuthorized])
 
   // ── Derived data ─────────────────────────────────────────────────────────────
   const activeLogs    = logs.filter((l) => l.status === 'Active')
@@ -181,6 +187,16 @@ export default function Maintenance() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  if (!isAuthorized) {
+    return (
+      <AccessDenied
+        moduleName="Maintenance"
+        requiredRole="Fleet Manager"
+        userRole={user?.role}
+      />
+    )
+  }
+
   return (
     <div className="space-y-6">
 

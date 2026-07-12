@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { hasRole } from '../constants/roles'
 import {
   getVehicles,
   createVehicle,
@@ -93,8 +94,7 @@ export default function Vehicles() {
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  // canWrite: only fleet_manager role (stored as 'fleet_manager' in AuthContext)
-  const canWrite = user?.role === 'fleet_manager' || user?.role === 'FleetManager'
+  const canWrite = hasRole(user, 'fleet_manager', 'FleetManager')
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchVehicles = async () => {

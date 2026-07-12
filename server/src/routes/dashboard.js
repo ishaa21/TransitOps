@@ -2,7 +2,7 @@ const express = require('express')
 const prisma = require('../prisma')
 const authMiddleware = require('../middleware/authMiddleware')
 const requireRole = require('../middleware/requireRole')
-const { buildVehicleWhere, hasVehicleFilters } = require('../utils/vehicleFilters')
+const { hasVehicleFilters, matchesVehicleFilters } = require('../utils/vehicleFilters')
 
 const router = express.Router()
 
@@ -24,49 +24,30 @@ const estimateEta = (trip) => {
 }
 
 router.get('/kpis', authMiddleware, requireRole('Dispatcher'), async (req, res) => {
-  const vehicleWhere = buildVehicleWhere(req.query)
   const filtered = hasVehicleFilters(req.query)
 
   try {
-    const vehicleIds = filtered ? await vehicleIdsForWhere(vehicleWhere) : null
-    const tripVehicleFilter =
-      filtered && vehicleIds.length > 0
-        ? { vehicleId: { in: vehicleIds } }
-        : filtered
-          ? { vehicleId: { in: [] } }
-          : {}
-
-    const [
-      activeVehicles,
-      availableVehicles,
-      vehiclesInMaintenance,
-      activeTrips,
-      pendingTrips,
-      totalVehicles,
-      vehicles,
-      recentTripsRaw,
-      vehicleTypes,
-      regions,
-      driversOnDuty,
-    ] = await Promise.all([
-      prisma.vehicle.count({ where: { ...vehicleWhere, status: 'OnTrip' } }),
-      prisma.vehicle.count({ where: { ...vehicleWhere, status: 'Available' } }),
-      prisma.vehicle.count({ where: { ...vehicleWhere, status: 'InShop' } }),
-      prisma.trip.count({ where: { status: 'Dispatched', ...tripVehicleFilter } }),
-      prisma.trip.count({ where: { status: 'Draft', ...tripVehicleFilter } }),
-      prisma.vehicle.count({
-        where: { ...vehicleWhere, status: { not: 'Retired' } },
-      }),
-      prisma.vehicle.findMany({ where: vehicleWhere, select: { status: true } }),
-      prisma.trip.findMany({
-        where: tripVehicleFilter,
-        orderBy: { id: 'desc' },
-        take: 8,
-      }),
-      prisma.vehicle.findMany({ select: { type: true }, distinct: ['type'] }),
-      prisma.vehicle.findMany({ select: { regNo: true } }),
-      countDriversOnDuty(vehicleIds, filtered),
+    const [allVehicles, trips, drivers] = await Promise.all([
+      prisma.vehicle.findMany(),
+      prisma.trip.findMany({ orderBy: { id: 'desc' } }),
+      prisma.driver.findMany({ select: { id: true, name: true, status: true } }),
     ])
+
+    const vehicles = filtered
+      ? allVehicles.filter((v) => matchesVehicleFilters(v, req.query))
+      : allVehicles
+
+    const vehicleIdSet = new Set(vehicles.map((v) => v.id))
+    const scopedTrips = filtered
+      ? trips.filter((t) => vehicleIdSet.has(t.vehicleId))
+      : trips
+
+    const activeVehicles = vehicles.filter((v) => v.status === 'OnTrip').length
+    const availableVehicles = vehicles.filter((v) => v.status === 'Available').length
+    const vehiclesInMaintenance = vehicles.filter((v) => v.status === 'InShop').length
+    const totalVehicles = vehicles.filter((v) => v.status !== 'Retired').length
+    const activeTrips = scopedTrips.filter((t) => t.status === 'Dispatched').length
+    const pendingTrips = scopedTrips.filter((t) => t.status === 'Draft').length
 
     const fleetUtilization =
       totalVehicles > 0 ? Math.round((activeVehicles / totalVehicles) * 100) : 0
@@ -76,26 +57,12 @@ router.get('/kpis', authMiddleware, requireRole('Dispatcher'), async (req, res) 
       count: vehicles.filter((v) => v.status === label).length,
     })).filter((item) => item.count > 0)
 
-    const tripVehicleIds = [...new Set(recentTripsRaw.map((t) => t.vehicleId))]
-    const tripDriverIds = [...new Set(recentTripsRaw.map((t) => t.driverId))]
+    const vehicleLookup = Object.fromEntries(allVehicles.map((v) => [v.id, v]))
+    const driverLookup = Object.fromEntries(drivers.map((d) => [d.id, d]))
 
-    const [vehicleRecords, driverRecords] = await Promise.all([
-      prisma.vehicle.findMany({
-        where: { id: { in: tripVehicleIds } },
-        select: { id: true, name: true, regNo: true },
-      }),
-      prisma.driver.findMany({
-        where: { id: { in: tripDriverIds } },
-        select: { id: true, name: true },
-      }),
-    ])
-
-    const vehicleMap = Object.fromEntries(vehicleRecords.map((v) => [v.id, v]))
-    const driverMap = Object.fromEntries(driverRecords.map((d) => [d.id, d]))
-
-    const recentTrips = recentTripsRaw.map((trip) => {
-      const vehicle = vehicleMap[trip.vehicleId]
-      const driver = driverMap[trip.driverId]
+    const recentTrips = scopedTrips.slice(0, 8).map((trip) => {
+      const vehicle = vehicleLookup[trip.vehicleId]
+      const driver = driverLookup[trip.driverId]
       return {
         id: trip.id,
         trip: `${trip.source} → ${trip.destination}`,
@@ -106,9 +73,23 @@ router.get('/kpis', authMiddleware, requireRole('Dispatcher'), async (req, res) 
       }
     })
 
+    let driversOnDuty = 0
+    if (!filtered) {
+      driversOnDuty = drivers.filter((d) => ['Available', 'OnTrip'].includes(d.status)).length
+    } else {
+      const dispatchedDriverIds = new Set(
+        scopedTrips.filter((t) => t.status === 'Dispatched').map((t) => t.driverId),
+      )
+      driversOnDuty = drivers.filter(
+        (d) => dispatchedDriverIds.has(d.id) && ['Available', 'OnTrip'].includes(d.status),
+      ).length
+    }
+
     const uniqueRegions = [
-      ...new Set(regions.map((v) => v.regNo.split('-')[0]).filter(Boolean)),
+      ...new Set(allVehicles.map((v) => v.regNo.split('-')[0]).filter(Boolean)),
     ].sort()
+
+    const vehicleTypes = [...new Set(allVehicles.map((v) => v.type))].sort()
 
     return res.json({
       activeVehicles,
@@ -121,7 +102,7 @@ router.get('/kpis', authMiddleware, requireRole('Dispatcher'), async (req, res) 
       vehicleStatusBreakdown,
       recentTrips,
       filterOptions: {
-        vehicleTypes: vehicleTypes.map((v) => v.type).sort(),
+        vehicleTypes,
         statuses: VEHICLE_STATUSES,
         regions: uniqueRegions,
       },
@@ -131,41 +112,5 @@ router.get('/kpis', authMiddleware, requireRole('Dispatcher'), async (req, res) 
     return res.status(500).json({ message: 'Failed to load dashboard data' })
   }
 })
-
-async function vehicleIdsForWhere(vehicleWhere) {
-  const records = await prisma.vehicle.findMany({
-    where: vehicleWhere,
-    select: { id: true },
-  })
-  return records.map((v) => v.id)
-}
-
-async function countDriversOnDuty(vehicleIds, filtered) {
-  if (!filtered) {
-    return prisma.driver.count({
-      where: { status: { in: ['Available', 'OnTrip'] } },
-    })
-  }
-
-  if (!vehicleIds || vehicleIds.length === 0) return 0
-
-  const trips = await prisma.trip.findMany({
-    where: {
-      vehicleId: { in: vehicleIds },
-      status: 'Dispatched',
-    },
-    select: { driverId: true },
-    distinct: ['driverId'],
-  })
-
-  if (trips.length === 0) return 0
-
-  return prisma.driver.count({
-    where: {
-      id: { in: trips.map((t) => t.driverId) },
-      status: { in: ['Available', 'OnTrip'] },
-    },
-  })
-}
 
 module.exports = router

@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { hasRole } from '../constants/roles'
+import AccessDenied from '../components/AccessDenied'
 import {
   getFuelLogs,
   createFuelLog,
@@ -108,6 +111,9 @@ const selectCls =
    MAIN PAGE
    ════════════════════════════════════════════════════════════════════════════ */
 export default function FuelExpenses() {
+  const { user } = useAuth()
+  const isAuthorized = hasRole(user, 'financial_analyst', 'FinancialAnalyst')
+
   const [fuelLogs, setFuelLogs] = useState([])
   const [expenses, setExpenses] = useState([])
   const [opCosts, setOpCosts] = useState([])
@@ -163,8 +169,12 @@ export default function FuelExpenses() {
   }, [])
 
   useEffect(() => {
+    if (!isAuthorized) {
+      setLoading(false)
+      return
+    }
     fetchAll()
-  }, [fetchAll])
+  }, [isAuthorized, fetchAll])
 
   const flash = (msg) => {
     setSuccessMsg(msg)
@@ -234,6 +244,16 @@ export default function FuelExpenses() {
   const grandToll = expenses.reduce((s, e) => s + (e.toll ?? 0), 0)
   const grandMisc = expenses.reduce((s, e) => s + (e.misc ?? 0), 0)
   const grandTotal = opCosts.reduce((s, c) => s + (c.totalOperationalCost ?? 0), 0)
+
+  if (!isAuthorized) {
+    return (
+      <AccessDenied
+        moduleName="Fuel & Expense Management"
+        requiredRole="Financial Analyst"
+        userRole={user?.role}
+      />
+    )
+  }
 
   /* ── Render ─────────────────────────────────────────────────────────────── */
   return (

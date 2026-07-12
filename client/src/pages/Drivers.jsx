@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { hasRole } from '../constants/roles'
+import AccessDenied from '../components/AccessDenied'
 import { getDrivers, createDriver, updateDriver, deleteDriver } from '../services/driverService'
 
 export default function Drivers() {
@@ -26,9 +28,16 @@ export default function Drivers() {
   const [formStatus, setFormStatus] = useState('Available')
   const [formError, setFormError] = useState('')
 
-  // Check write permissions
-  // Frontend roles are: fleet_manager, safety_officer, dispatcher, financial_analyst
-  const canWrite = user?.role === 'safety_officer' || user?.role === 'fleet_manager'
+  const canWrite = hasRole(user, 'safety_officer', 'SafetyOfficer')
+  const isAuthorized = hasRole(
+    user,
+    'safety_officer',
+    'SafetyOfficer',
+    'dispatcher',
+    'Dispatcher',
+    'financial_analyst',
+    'FinancialAnalyst',
+  )
 
   const fetchDrivers = async () => {
     setLoading(true)
@@ -44,8 +53,9 @@ export default function Drivers() {
   }
 
   useEffect(() => {
-    fetchDrivers()
-  }, [])
+    if (isAuthorized) fetchDrivers()
+    else setLoading(false)
+  }, [isAuthorized])
 
   const isLicenseExpired = (expiryDateStr) => {
     if (!expiryDateStr) return false
@@ -177,6 +187,16 @@ export default function Drivers() {
     if (score >= 90) return 'text-green-400 font-semibold'
     if (score >= 70) return 'text-yellow-400 font-semibold'
     return 'text-red-400 font-semibold'
+  }
+
+  if (!isAuthorized) {
+    return (
+      <AccessDenied
+        moduleName="Driver Management"
+        requiredRole="Safety Officer, Dispatcher, or Financial Analyst"
+        userRole={user?.role}
+      />
+    )
   }
 
   return (

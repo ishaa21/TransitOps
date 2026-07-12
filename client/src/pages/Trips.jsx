@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { hasRole } from '../constants/roles'
+import AccessDenied from '../components/AccessDenied'
 import {
   getTrips,
   createTrip,
@@ -12,7 +14,16 @@ import { getDrivers } from '../services/driverService'
 
 export default function Trips() {
   const { user } = useAuth()
-  const canWrite = user?.role === 'dispatcher' || user?.role === 'Dispatcher'
+  const canWrite = hasRole(user, 'dispatcher', 'Dispatcher')
+  const isAuthorized = hasRole(
+    user,
+    'dispatcher',
+    'Dispatcher',
+    'safety_officer',
+    'SafetyOfficer',
+    'financial_analyst',
+    'FinancialAnalyst',
+  )
 
   const [trips, setTrips] = useState([])
   const [allVehicles, setAllVehicles] = useState([])
@@ -85,9 +96,13 @@ export default function Trips() {
   }, [])
 
   useEffect(() => {
+    if (!isAuthorized) {
+      setLoading(false)
+      return
+    }
     fetchData(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [isAuthorized])
 
   // ── Create ────────────────────────────────────────────────────────────────
   const handleCreateTrip = async (e) => {
@@ -258,6 +273,16 @@ export default function Trips() {
   if (driverExpired)    dispatchValidation.push('Driver license is expired')
 
   const isDispatchDisabled = dispatchValidation.length > 0
+
+  if (!isAuthorized) {
+    return (
+      <AccessDenied
+        moduleName="Trip Dispatcher"
+        requiredRole="Dispatcher, Safety Officer, or Financial Analyst"
+        userRole={user?.role}
+      />
+    )
+  }
 
   return (
     <div className="space-y-6">

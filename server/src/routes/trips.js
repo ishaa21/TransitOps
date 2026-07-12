@@ -34,25 +34,64 @@ router.get('/', authMiddleware, requireRole('Dispatcher', 'SafetyOfficer', 'Fina
 })
 
 // POST /api/trips - Create a trip (status defaults to Draft)
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, requireRole('Dispatcher'), async (req, res) => {
   const { source, destination, vehicleId, driverId, cargoWeightKg, plannedDistanceKm, revenue } = req.body
 
   if (!source || !destination || !vehicleId || !driverId || cargoWeightKg === undefined || plannedDistanceKm === undefined) {
     return res.status(400).json({ message: 'All trip fields are required' })
   }
 
+  const vid = parseInt(vehicleId, 10)
+  const did = parseInt(driverId, 10)
+  if (isNaN(vid) || isNaN(did)) {
+    return res.status(400).json({ message: 'Invalid vehicle or driver id' })
+  }
+
+  const cargo = parseFloat(cargoWeightKg)
+  const distance = parseFloat(plannedDistanceKm)
+  if (isNaN(cargo) || cargo < 0 || isNaN(distance) || distance < 0) {
+    return res.status(400).json({ message: 'Cargo weight and planned distance must be non-negative numbers' })
+  }
+
   try {
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: vid } })
+    if (!vehicle) {
+      return res.status(404).json({ message: 'Vehicle not found' })
+    }
+    if (vehicle.status !== 'Available') {
+      return res.status(400).json({ message: 'Assigned vehicle must be Available' })
+    }
+    if (cargo > vehicle.capacityKg) {
+      const excess = cargo - vehicle.capacityKg
+      return res.status(400).json({ message: `Capacity exceeded by ${excess}kg` })
+    }
+
+    const driver = await prisma.driver.findUnique({ where: { id: did } })
+    if (!driver) {
+      return res.status(404).json({ message: 'Driver not found' })
+    }
+    if (driver.status === 'Suspended') {
+      return res.status(400).json({ message: 'Suspended drivers cannot be assigned' })
+    }
+    if (driver.status !== 'Available') {
+      return res.status(400).json({ message: 'Assigned driver must be Available' })
+    }
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (new Date(driver.licenseExpiry) < today) {
+      return res.status(400).json({ message: 'Assigned driver has an expired license' })
+    }
+
     const trip = await prisma.trip.create({
       data: {
         source,
         destination,
-        vehicleId: parseInt(vehicleId, 10),
-        driverId: parseInt(driverId, 10),
-        cargoWeightKg: parseFloat(cargoWeightKg),
-        plannedDistanceKm: parseFloat(plannedDistanceKm),
+        vehicleId: vid,
+        driverId: did,
+        cargoWeightKg: cargo,
+        plannedDistanceKm: distance,
         status: 'Draft',
-        // revenue is optional; if omitted the analytics endpoint will use
-        // a flat assumed rate of ₹15/km (REVENUE_PER_KM_DEFAULT in reports.js).
         ...(revenue !== undefined && revenue !== null && revenue !== '' && { revenue: parseFloat(revenue) }),
       }
     })
@@ -60,35 +99,6 @@ router.post('/', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Failed to create trip:', error)
     return res.status(500).json({ message: 'Failed to create trip' })
-  }
-})
-
-// PUT /api/trips/:id/status - Update a trip's status (for stepper)
-router.put('/:id/status', authMiddleware, requireRole('Dispatcher'), async (req, res) => {
-  const { id } = req.params
-  const { status } = req.body
-
-  const tripId = parseInt(id, 10)
-  if (isNaN(tripId)) {
-    return res.status(400).json({ message: 'Invalid trip ID' })
-  }
-
-  if (!status) {
-    return res.status(400).json({ message: 'Status is required' })
-  }
-
-  try {
-    const updated = await prisma.trip.update({
-      where: { id: tripId },
-      data: { status }
-    })
-    return res.json(updated)
-  } catch (error) {
-    console.error('Failed to update trip status:', error)
-    if (error.code === 'P2025') {
-      return res.status(404).json({ message: 'Trip not found' })
-    }
-    return res.status(500).json({ message: 'Failed to update trip status' })
   }
 })
 
