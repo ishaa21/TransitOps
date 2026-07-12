@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const { PrismaClient } = require('@prisma/client')
 
 const prisma = new PrismaClient()
@@ -122,6 +124,93 @@ async function main() {
   }
 
   console.log(`Seeded ${vehicles.length} vehicles and ${drivers.length} drivers.`)
+
+  const vehicleRecords = await prisma.vehicle.findMany({ orderBy: { id: 'asc' } })
+  const driverRecords = await prisma.driver.findMany({ orderBy: { id: 'asc' } })
+
+  const trips = [
+    {
+      source: 'Mumbai',
+      destination: 'Pune',
+      vehicleId: vehicleRecords[1]?.id,
+      driverId: driverRecords[1]?.id,
+      cargoWeightKg: 12000,
+      plannedDistanceKm: 150,
+      status: 'Dispatched',
+      revenue: 45000,
+    },
+    {
+      source: 'Bengaluru',
+      destination: 'Chennai',
+      vehicleId: vehicleRecords[4]?.id,
+      driverId: driverRecords[2]?.id,
+      cargoWeightKg: 18000,
+      plannedDistanceKm: 345,
+      status: 'Draft',
+      revenue: null,
+    },
+    {
+      source: 'Delhi',
+      destination: 'Jaipur',
+      vehicleId: vehicleRecords[0]?.id,
+      driverId: driverRecords[0]?.id,
+      cargoWeightKg: 9500,
+      plannedDistanceKm: 280,
+      status: 'Dispatched',
+      revenue: 62000,
+    },
+    {
+      source: 'Hyderabad',
+      destination: 'Vijayawada',
+      vehicleId: vehicleRecords[2]?.id,
+      driverId: driverRecords[4]?.id,
+      cargoWeightKg: 14000,
+      plannedDistanceKm: 275,
+      status: 'Completed',
+      revenue: 38000,
+    },
+    {
+      source: 'Ahmedabad',
+      destination: 'Surat',
+      vehicleId: vehicleRecords[1]?.id,
+      driverId: driverRecords[1]?.id,
+      cargoWeightKg: 8000,
+      plannedDistanceKm: 265,
+      status: 'Draft',
+      revenue: null,
+    },
+    {
+      source: 'Kolkata',
+      destination: 'Bhubaneswar',
+      vehicleId: vehicleRecords[4]?.id,
+      driverId: driverRecords[2]?.id,
+      cargoWeightKg: 11000,
+      plannedDistanceKm: 440,
+      status: 'Dispatched',
+      revenue: 71000,
+    },
+  ]
+
+  console.log('Seeding trips...')
+  for (const trip of trips) {
+    if (!trip.vehicleId || !trip.driverId) continue
+
+    const existing = await prisma.trip.findFirst({
+      where: {
+        source: trip.source,
+        destination: trip.destination,
+        vehicleId: trip.vehicleId,
+      },
+    })
+
+    if (existing) {
+      await prisma.trip.update({ where: { id: existing.id }, data: trip })
+    } else {
+      await prisma.trip.create({ data: trip })
+    }
+  }
+
+  console.log(`Seeded ${trips.length} trips.`)
 }
 
 main()
