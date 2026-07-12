@@ -10,6 +10,8 @@ export default function Trips() {
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [dispatching, setDispatching] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   // Form states
   const [source, setSource] = useState('')
@@ -105,18 +107,26 @@ export default function Trips() {
   }
 
   const handleDispatchTrip = async (tripId) => {
+    setDispatching(true)
+    setError('')
+    setSuccessMessage('')
     try {
       await dispatchTrip(tripId)
+      setSuccessMessage('Trip successfully dispatched!')
       
       // Update local state directly for responsive feedback
       setTrips(prevTrips => prevTrips.map(t => t.id === tripId ? { ...t, status: 'Dispatched' } : t))
       setSelectedTrip(prev => prev && prev.id === tripId ? { ...prev, status: 'Dispatched' } : prev)
       
       // Fetch fresh data in background
-      fetchData()
+      await fetchData()
+      
+      setTimeout(() => setSuccessMessage(''), 4000)
     } catch (err) {
       console.error(err)
       setError(err.response?.data?.message || 'Failed to dispatch trip')
+    } finally {
+      setDispatching(false)
     }
   }
 
@@ -211,6 +221,12 @@ export default function Trips() {
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           ⚠️ {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+          ✓ {successMessage}
         </div>
       )}
 
@@ -431,15 +447,15 @@ export default function Trips() {
                       </button>
                       <button
                         onClick={() => handleDispatchTrip(selectedTrip.id)}
-                        disabled={isDispatchDisabled}
+                        disabled={isDispatchDisabled || dispatching}
                         className={[
                           'rounded-lg px-4 py-2 text-xs font-semibold text-white transition-all duration-200',
-                          isDispatchDisabled
+                          (isDispatchDisabled || dispatching)
                             ? 'bg-gray-600 opacity-55 cursor-not-allowed'
                             : 'bg-transit-orange hover:bg-transit-orange-hover'
                         ].join(' ')}
                       >
-                        Dispatch Trip
+                        {dispatching ? 'Dispatching...' : 'Dispatch Trip'}
                       </button>
                     </>
                   )}

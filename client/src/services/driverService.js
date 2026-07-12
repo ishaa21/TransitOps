@@ -57,11 +57,7 @@ let stubDrivers = [
   },
 ]
 
-const shouldFallbackToStub = (error) =>
-  USE_STUB ||
-  error.code === 'ERR_NETWORK' ||
-  error.response?.status === 404 ||
-  error.response?.status === 502
+const shouldFallbackToStub = (_error) => USE_STUB
 
 export const getDrivers = async () => {
   try {

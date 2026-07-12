@@ -119,6 +119,9 @@ router.put('/:id/dispatch', authMiddleware, async (req, res) => {
       }
 
       // Check driver availability, suspension, and license expiry
+      if (driver.status === 'Suspended') {
+        throw new Error('DriverSuspended')
+      }
       if (driver.status !== 'Available') {
         throw new Error('DriverNotAvailable')
       }
@@ -179,6 +182,9 @@ router.put('/:id/dispatch', authMiddleware, async (req, res) => {
     }
     if (error.message === 'VehicleNotAvailable') {
       return res.status(400).json({ message: 'Assigned vehicle is not Available' })
+    }
+    if (error.message === 'DriverSuspended') {
+      return res.status(400).json({ message: 'Assigned driver is Suspended — dispatch blocked' })
     }
     if (error.message === 'DriverNotAvailable') {
       return res.status(400).json({ message: 'Assigned driver is not Available' })
