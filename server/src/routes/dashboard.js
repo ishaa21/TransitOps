@@ -1,6 +1,7 @@
 const express = require('express')
 const prisma = require('../prisma')
 const authMiddleware = require('../middleware/authMiddleware')
+const requireRole = require('../middleware/requireRole')
 const { buildVehicleWhere, hasVehicleFilters } = require('../utils/vehicleFilters')
 
 const router = express.Router()
@@ -22,7 +23,7 @@ const estimateEta = (trip) => {
   })
 }
 
-router.get('/kpis', authMiddleware, async (req, res) => {
+router.get('/kpis', authMiddleware, requireRole('Dispatcher'), async (req, res) => {
   const vehicleWhere = buildVehicleWhere(req.query)
   const filtered = hasVehicleFilters(req.query)
 

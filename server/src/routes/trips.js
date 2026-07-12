@@ -1,11 +1,12 @@
 const express = require('express')
 const prisma = require('../prisma')
 const authMiddleware = require('../middleware/authMiddleware')
+const requireRole = require('../middleware/requireRole')
 
 const router = express.Router()
 
 // GET /api/trips - Fetch all trips with vehicle/driver names resolved
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', authMiddleware, requireRole('Dispatcher', 'SafetyOfficer', 'FinancialAnalyst'), async (req, res) => {
   try {
     const trips = await prisma.trip.findMany()
 
@@ -34,7 +35,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // POST /api/trips - Create a trip (status defaults to Draft)
 router.post('/', authMiddleware, async (req, res) => {
-  const { source, destination, vehicleId, driverId, cargoWeightKg, plannedDistanceKm, revenue } = req.body
+  const { source, destination, vehicleId, driverId, cargoWeightKg, plannedDistanceKm } = req.body
 
   if (!source || !destination || !vehicleId || !driverId || cargoWeightKg === undefined || plannedDistanceKm === undefined) {
     return res.status(400).json({ message: 'All trip fields are required' })
@@ -63,7 +64,7 @@ router.post('/', authMiddleware, async (req, res) => {
 })
 
 // PUT /api/trips/:id/status - Update a trip's status (for stepper)
-router.put('/:id/status', authMiddleware, async (req, res) => {
+router.put('/:id/status', authMiddleware, requireRole('Dispatcher'), async (req, res) => {
   const { id } = req.params
   const { status } = req.body
 
@@ -92,7 +93,7 @@ router.put('/:id/status', authMiddleware, async (req, res) => {
 })
 
 // PUT /api/trips/:id/dispatch - Dispatch a trip in a single transaction (protected)
-router.put('/:id/dispatch', authMiddleware, async (req, res) => {
+router.put('/:id/dispatch', authMiddleware, requireRole('Dispatcher'), async (req, res) => {
   const { id } = req.params
   const tripId = parseInt(id, 10)
   if (isNaN(tripId)) {
@@ -204,7 +205,7 @@ router.put('/:id/dispatch', authMiddleware, async (req, res) => {
 })
 
 // PUT /api/trips/:id/complete - Complete a dispatched trip (records odometer + fuel)
-router.put('/:id/complete', authMiddleware, async (req, res) => {
+router.put('/:id/complete', authMiddleware, requireRole('Dispatcher'), async (req, res) => {
   const { id } = req.params
   const tripId = parseInt(id, 10)
   if (isNaN(tripId)) {
@@ -298,7 +299,7 @@ router.put('/:id/complete', authMiddleware, async (req, res) => {
 })
 
 // PUT /api/trips/:id/cancel - Cancel a dispatched trip (restores vehicle + driver)
-router.put('/:id/cancel', authMiddleware, async (req, res) => {
+router.put('/:id/cancel', authMiddleware, requireRole('Dispatcher'), async (req, res) => {
   const { id } = req.params
   const tripId = parseInt(id, 10)
   if (isNaN(tripId)) {

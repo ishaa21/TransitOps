@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '../context/AuthContext'
 import {
   getTrips,
   createTrip,
@@ -10,6 +11,9 @@ import { getVehicles, getAvailableVehicles } from '../services/vehicleService'
 import { getDrivers } from '../services/driverService'
 
 export default function Trips() {
+  const { user } = useAuth()
+  const canWrite = user?.role === 'dispatcher' || user?.role === 'Dispatcher'
+
   const [trips, setTrips] = useState([])
   const [allVehicles, setAllVehicles] = useState([])
   const [availableVehicles, setAvailableVehicles] = useState([])
@@ -277,90 +281,93 @@ export default function Trips() {
       {/* Main grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* ── Create Trip Form ── */}
-        <div className="rounded-xl border border-transit-dark-border bg-transit-dark-elevated p-6 lg:col-span-1 shadow-md">
-          <h3 className="text-base font-bold text-white mb-4">Create New Trip</h3>
-          <form onSubmit={handleCreateTrip} className="space-y-4">
-            {formError && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-                ✕ {formError}
-              </div>
-            )}
+        {canWrite ? (
+          <div className="rounded-xl border border-transit-dark-border bg-transit-dark-elevated p-6 lg:col-span-1 shadow-md">
+            <h3 className="text-base font-bold text-white mb-4">Create New Trip</h3>
+            <form onSubmit={handleCreateTrip} className="space-y-4">
+              {formError && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                  ✕ {formError}
+                </div>
+              )}
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Source</label>
-              <input type="text" required value={source} onChange={(e) => setSource(e.target.value)}
-                placeholder="e.g. Mumbai"
-                className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Destination</label>
-              <input type="text" required value={destination} onChange={(e) => setDestination(e.target.value)}
-                placeholder="e.g. Pune"
-                className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Vehicle</label>
-              <select required value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}
-                className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange">
-                <option value="">Select an Available Vehicle</option>
-                {availableVehicles.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name} ({v.regNo}) — Max {v.capacityKg} kg</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Driver</label>
-              <select required value={driverId} onChange={(e) => setDriverId(e.target.value)}
-                className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange">
-                <option value="">Select an Available Driver</option>
-                {formAvailableDrivers.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name} (Score: {d.safetyScore})</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Cargo (kg)</label>
-                <input type="number" step="any" required value={cargoWeight}
-                  onChange={(e) => setCargoWeight(e.target.value)} placeholder="e.g. 5000"
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Source</label>
+                <input type="text" required value={source} onChange={(e) => setSource(e.target.value)}
+                  placeholder="e.g. Mumbai"
                   className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Distance (km)</label>
-                <input type="number" step="any" required value={plannedDistance}
-                  onChange={(e) => setPlannedDistance(e.target.value)} placeholder="e.g. 140"
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Destination</label>
+                <input type="text" required value={destination} onChange={(e) => setDestination(e.target.value)}
+                  placeholder="e.g. Pune"
                   className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
-                Revenue (₹) <span className="normal-case font-normal text-gray-500">— optional</span>
-              </label>
-              <input type="number" step="any" min="0" value={tripRevenue}
-                onChange={(e) => setTripRevenue(e.target.value)} placeholder="Leave blank to use ₹15/km assumed rate"
-                className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
-            </div>
-
-            {isFormOverCapacity && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400">
-                ⚠️ Capacity exceeded by {formCapacityExcess} kg — dispatch blocked
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Vehicle</label>
+                <select required value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}
+                  className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange">
+                  <option value="">Select an Available Vehicle</option>
+                  {availableVehicles.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name} ({v.regNo}) — Max {v.capacityKg} kg</option>
+                  ))}
+                </select>
               </div>
-            )}
 
-            <button type="submit" disabled={isFormOverCapacity}
-              className={[
-                'w-full rounded-lg py-2.5 text-sm font-semibold text-white transition-colors',
-                isFormOverCapacity ? 'bg-gray-600 cursor-not-allowed opacity-60' : 'bg-transit-orange hover:bg-transit-orange-hover'
-              ].join(' ')}>
-              Create Trip
-            </button>
-          </form>
-        </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Driver</label>
+                <select required value={driverId} onChange={(e) => setDriverId(e.target.value)}
+                  className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange">
+                  <option value="">Select an Available Driver</option>
+                  {formAvailableDrivers.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name} (Score: {d.safetyScore})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Cargo (kg)</label>
+                  <input type="number" step="any" required value={cargoWeight}
+                    onChange={(e) => setCargoWeight(e.target.value)} placeholder="e.g. 5000"
+                    className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Distance (km)</label>
+                  <input type="number" step="any" required value={plannedDistance}
+                    onChange={(e) => setPlannedDistance(e.target.value)} placeholder="e.g. 140"
+                    className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
+                </div>
+              </div>
+
+              {isFormOverCapacity && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400">
+                  ⚠️ Capacity exceeded by {formCapacityExcess} kg — dispatch blocked
+                </div>
+              )}
+
+              <button type="submit" disabled={isFormOverCapacity}
+                className={[
+                  'w-full rounded-lg py-2.5 text-sm font-semibold text-white transition-colors',
+                  isFormOverCapacity ? 'bg-gray-600 cursor-not-allowed opacity-60' : 'bg-transit-orange hover:bg-transit-orange-hover'
+                ].join(' ')}>
+                Create Trip
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-transit-dark-border bg-transit-dark-elevated p-6 lg:col-span-1 shadow-md flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center text-center py-8 text-gray-500">
+              <span className="text-3xl mb-3">🔒</span>
+              <h4 className="font-bold text-white mb-1">Read-Only Mode</h4>
+              <p className="text-xs max-w-[200px] leading-relaxed">
+                Your role ({(user?.role || 'Guest')}) does not have permission to plan or dispatch trips.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ── Lifecycle Stepper ── */}
         <div className="rounded-xl border border-transit-dark-border bg-transit-dark-elevated p-6 lg:col-span-2 shadow-md">
@@ -428,38 +435,44 @@ export default function Trips() {
               )}
 
               {/* Action Buttons */}
-              <div className="pt-6 flex gap-3 flex-wrap border-t border-transit-dark-border justify-end">
-                {selectedTrip.status === 'Draft' && (
-                  <button
-                    onClick={() => handleDispatchTrip(selectedTrip.id)}
-                    disabled={isDispatchDisabled || actionLoading}
-                    className={[
-                      'rounded-lg px-4 py-2 text-xs font-semibold text-white transition-all duration-200',
-                      (isDispatchDisabled || actionLoading) ? 'bg-gray-600 opacity-55 cursor-not-allowed' : 'bg-transit-orange hover:bg-transit-orange-hover'
-                    ].join(' ')}>
-                    {actionLoading ? 'Dispatching…' : 'Dispatch Trip'}
-                  </button>
-                )}
-
-                {selectedTrip.status === 'Dispatched' && (
+              <div className="pt-6 flex gap-3 flex-wrap border-t border-transit-dark-border justify-end items-center">
+                {canWrite ? (
                   <>
-                    <button
-                      onClick={() => handleCancelDispatched(selectedTrip.id)}
-                      disabled={actionLoading}
-                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      {actionLoading ? 'Cancelling…' : 'Cancel Trip'}
-                    </button>
-                    <button
-                      onClick={openCompleteModal}
-                      disabled={actionLoading}
-                      className="rounded-lg bg-green-600 px-4 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      Complete Trip
-                    </button>
-                  </>
-                )}
+                    {selectedTrip.status === 'Draft' && (
+                      <button
+                        onClick={() => handleDispatchTrip(selectedTrip.id)}
+                        disabled={isDispatchDisabled || actionLoading}
+                        className={[
+                          'rounded-lg px-4 py-2 text-xs font-semibold text-white transition-all duration-200',
+                          (isDispatchDisabled || actionLoading) ? 'bg-gray-600 opacity-55 cursor-not-allowed' : 'bg-transit-orange hover:bg-transit-orange-hover'
+                        ].join(' ')}>
+                        {actionLoading ? 'Dispatching…' : 'Dispatch Trip'}
+                      </button>
+                    )}
 
-                {(selectedTrip.status === 'Completed' || selectedTrip.status === 'Cancelled') && (
-                  <span className="text-xs text-gray-500 italic">This trip is finalized. No further transitions available.</span>
+                    {selectedTrip.status === 'Dispatched' && (
+                      <>
+                        <button
+                          onClick={() => handleCancelDispatched(selectedTrip.id)}
+                          disabled={actionLoading}
+                          className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          {actionLoading ? 'Cancelling…' : 'Cancel Trip'}
+                        </button>
+                        <button
+                          onClick={openCompleteModal}
+                          disabled={actionLoading}
+                          className="rounded-lg bg-green-600 px-4 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          Complete Trip
+                        </button>
+                      </>
+                    )}
+
+                    {(selectedTrip.status === 'Completed' || selectedTrip.status === 'Cancelled') && (
+                      <span className="text-xs text-gray-500 italic">This trip is finalized. No further transitions available.</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-xs text-gray-500 italic">🔒 Read-only view (role: {user?.role}). Actions disabled.</span>
                 )}
               </div>
             </div>

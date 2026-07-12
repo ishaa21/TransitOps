@@ -51,16 +51,3 @@ body {
 .form-input:focus {
   border-color: var(--color-transit-orange);
 }
-
-/* ── Analytics responsive chart grid ───────────── */
-@media (max-width: 860px) {
-  .analytics-charts {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-/* ── Spin animation for refresh buttons ─────────── */
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
