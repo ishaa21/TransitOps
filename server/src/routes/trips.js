@@ -5,10 +5,10 @@ const authMiddleware = require('../middleware/authMiddleware')
 const router = express.Router()
 
 // GET /api/trips - Fetch all trips with vehicle/driver names resolved
-router.get('/', authMiddleware, async (req, res) => { 
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const trips = await prisma.trip.findMany()
-    
+
     // Fetch vehicles and drivers to resolve names in memory (due to no direct schema relations)
     const [vehicles, drivers] = await Promise.all([
       prisma.vehicle.findMany({ select: { id: true, name: true, regNo: true } }),
