@@ -12,7 +12,7 @@ const stubLogin = async ({ email, password, role }) => {
     throw error
   }
   return {
-    token: `stub-jwt-${Date.now()}`,
+    token: `stub-jwt-${role}-${Date.now()}`,
     user: { email, role },
   }
 }
@@ -25,7 +25,7 @@ const stubRegister = async ({ email, password, role }) => {
     throw error
   }
   return {
-    token: `stub-jwt-${Date.now()}`,
+    token: `stub-jwt-${role}-${Date.now()}`,
     user: { email, role },
   }
 }
