@@ -1,6 +1,7 @@
 require('dotenv').config()
 
 const { PrismaClient } = require('@prisma/client')
+const bcrypt = require('bcrypt')
 
 const prisma = new PrismaClient()
 
@@ -211,6 +212,23 @@ async function main() {
   }
 
   console.log(`Seeded ${trips.length} trips.`)
+
+  console.log('Seeding users...')
+  const passwordHash = await bcrypt.hash('password', 10)
+  const users = [
+    { email: 'fleet_manager@transitops.in', role: 'FleetManager' },
+    { email: 'dispatcher@transitops.in', role: 'Dispatcher' },
+    { email: 'safety_officer@transitops.in', role: 'SafetyOfficer' },
+    { email: 'financial_analyst@transitops.in', role: 'FinancialAnalyst' },
+  ]
+  for (const u of users) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: { role: u.role, password: passwordHash },
+      create: { email: u.email, role: u.role, password: passwordHash },
+    })
+  }
+  console.log('Seeded users.')
 }
 
 main()

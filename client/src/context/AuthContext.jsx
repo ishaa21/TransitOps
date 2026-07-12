@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { login as loginRequest } from '../services/authService'
+import { login as loginRequest, register as registerRequest } from '../services/authService'
 
 const AuthContext = createContext(null)
 
@@ -38,6 +38,17 @@ export function AuthProvider({ children }) {
     }
   }, [persistAuth])
 
+  const register = useCallback(async (credentials) => {
+    setLoading(true)
+    try {
+      const data = await registerRequest(credentials)
+      persistAuth({ token: data.token, user: data.user })
+      return data
+    } finally {
+      setLoading(false)
+    }
+  }, [persistAuth])
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
@@ -51,9 +62,10 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(auth.token),
       loading,
       login,
+      register,
       logout,
     }),
-    [auth, loading, login, logout],
+    [auth, loading, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

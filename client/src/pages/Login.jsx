@@ -6,12 +6,13 @@ import { ROLES, ROLE_ACCESS, getHomeRouteForRole } from '../constants/roles'
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { isAuthenticated, login, loading, user } = useAuth()
+  const { isAuthenticated, login, register, loading, user } = useAuth()
 
   const [email, setEmail] = useState('raven.k@transitops.in')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('dispatcher')
   const [rememberMe, setRememberMe] = useState(true)
+  const [isRegister, setIsRegister] = useState(false)
   const [error, setError] = useState('')
 
   const from = location.state?.from?.pathname
@@ -25,13 +26,20 @@ export default function Login() {
     setError('')
 
     try {
-      const data = await login({ email, password, role })
-      navigate(from ?? getHomeRouteForRole(data.user.role), { replace: true })
+      let loggedInUser
+      if (isRegister) {
+        const data = await register({ email, password, role })
+        loggedInUser = data.user
+      } else {
+        const data = await login({ email, password, role })
+        loggedInUser = data.user
+      }
+      navigate(from ?? getHomeRouteForRole(loggedInUser.role), { replace: true })
     } catch (err) {
       const message =
         err.response?.data?.message ??
         err.message ??
-        'Invalid credentials. Account locked after 5 failed attempts.'
+        (isRegister ? 'Registration failed. Please check your details.' : 'Invalid credentials. Account locked after 5 failed attempts.')
       setError(message)
     }
   }
@@ -73,8 +81,12 @@ export default function Login() {
       <section className="flex flex-1 items-center justify-center bg-transit-dark px-6 py-10">
         <div className="w-full max-w-md">
           <div className="mb-8">
-            <h1 className="text-3xl font-semibold text-white">Sign in to your account</h1>
-            <p className="mt-2 text-sm text-gray-400">Enter your credentials to continue</p>
+            <h1 className="text-3xl font-semibold text-white">
+              {isRegister ? 'Create an account' : 'Sign in to your account'}
+            </h1>
+            <p className="mt-2 text-sm text-gray-400">
+              {isRegister ? 'Fill in details to register new user' : 'Enter your credentials to continue'}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -126,20 +138,22 @@ export default function Login() {
               </select>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-400">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-transit-dark-border accent-transit-orange"
-                />
-                Remember me
-              </label>
-              <button type="button" className="text-sm text-blue-400 hover:text-blue-300">
-                Forgot password?
-              </button>
-            </div>
+            {!isRegister && (
+              <div className="flex items-center justify-between">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-400">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-transit-dark-border accent-transit-orange"
+                  />
+                  Remember me
+                </label>
+                <button type="button" className="text-sm text-blue-400 hover:text-blue-300">
+                  Forgot password?
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -152,8 +166,21 @@ export default function Login() {
               disabled={loading}
               className="w-full rounded-lg bg-transit-orange py-3 text-sm font-semibold text-white transition-colors hover:bg-transit-orange-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? 'Signing in…' : 'Sign In'}
+              {loading ? (isRegister ? 'Registering…' : 'Signing in…') : (isRegister ? 'Register' : 'Sign In')}
             </button>
+
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegister(!isRegister)
+                  setError('')
+                }}
+                className="text-sm text-transit-orange hover:underline focus:outline-none"
+              >
+                {isRegister ? 'Already have an account? Sign In' : "Don't have an account? Register"}
+              </button>
+            </div>
           </form>
 
           <div className="mt-8 rounded-lg border border-transit-dark-border bg-transit-dark-elevated p-4 text-sm text-gray-400">
