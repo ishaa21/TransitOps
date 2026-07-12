@@ -34,7 +34,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // POST /api/trips - Create a trip (status defaults to Draft)
 router.post('/', authMiddleware, async (req, res) => {
-  const { source, destination, vehicleId, driverId, cargoWeightKg, plannedDistanceKm } = req.body
+  const { source, destination, vehicleId, driverId, cargoWeightKg, plannedDistanceKm, revenue } = req.body
 
   if (!source || !destination || !vehicleId || !driverId || cargoWeightKg === undefined || plannedDistanceKm === undefined) {
     return res.status(400).json({ message: 'All trip fields are required' })
@@ -49,7 +49,10 @@ router.post('/', authMiddleware, async (req, res) => {
         driverId: parseInt(driverId, 10),
         cargoWeightKg: parseFloat(cargoWeightKg),
         plannedDistanceKm: parseFloat(plannedDistanceKm),
-        status: 'Draft'
+        status: 'Draft',
+        // revenue is optional; if omitted the analytics endpoint will use
+        // a flat assumed rate of ₹15/km (REVENUE_PER_KM_DEFAULT in reports.js).
+        ...(revenue !== undefined && revenue !== null && { revenue: parseFloat(revenue) }),
       }
     })
     return res.status(201).json(trip)

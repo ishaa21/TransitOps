@@ -26,6 +26,7 @@ export default function Trips() {
   const [driverId, setDriverId] = useState('')
   const [cargoWeight, setCargoWeight] = useState('')
   const [plannedDistance, setPlannedDistance] = useState('')
+  const [tripRevenue, setTripRevenue] = useState('')
   const [formError, setFormError] = useState('')
 
   // Selected trip for the lifecycle stepper
@@ -104,6 +105,8 @@ export default function Trips() {
         driverId,
         cargoWeightKg: cargoWeight,
         plannedDistanceKm: plannedDistance,
+        // Revenue is optional; if left blank, analytics will use ₹15/km assumed rate.
+        ...(tripRevenue !== '' && { revenue: tripRevenue }),
       })
 
       await fetchData()
@@ -113,6 +116,7 @@ export default function Trips() {
       setDriverId('')
       setCargoWeight('')
       setPlannedDistance('')
+      setTripRevenue('')
       setSelectedTrip(newTrip)
       showSuccess('Trip created successfully!')
     } catch (err) {
@@ -331,6 +335,15 @@ export default function Trips() {
                   onChange={(e) => setPlannedDistance(e.target.value)} placeholder="e.g. 140"
                   className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                Revenue (₹) <span className="normal-case font-normal text-gray-500">— optional</span>
+              </label>
+              <input type="number" step="any" min="0" value={tripRevenue}
+                onChange={(e) => setTripRevenue(e.target.value)} placeholder="Leave blank to use ₹15/km assumed rate"
+                className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
             </div>
 
             {isFormOverCapacity && (

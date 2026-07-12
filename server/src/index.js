@@ -9,6 +9,7 @@ const vehicleRoutes = require('./routes/vehicles')
 const tripRoutes = require('./routes/trips')
 const maintenanceRoutes = require('./routes/maintenance')
 const fuelExpensesRoutes = require('./routes/fuelExpenses')
+const reportsRoutes = require('./routes/reports')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -27,6 +28,7 @@ app.use('/api/vehicles', vehicleRoutes)
 app.use('/api/trips', tripRoutes)
 app.use('/api/maintenance', maintenanceRoutes)
 app.use('/api', fuelExpensesRoutes)
+app.use('/api/reports', reportsRoutes)
 
 app.use((err, _req, res, _next) => {
   console.error(err)
