@@ -135,6 +135,83 @@ export default function Reports() {
           background-size: 200% 100%;
           animation: shimmer 1.5s infinite;
         }
+
+        @media print {
+          /* Hide non-printable layout elements and controls */
+          aside, header, button, .no-print, nav {
+            display: none !important;
+          }
+          
+          /* Page break styling */
+          @page {
+            size: A4 landscape;
+            margin: 1.5cm;
+          }
+
+          /* Force print-friendly color contrast */
+          html, body, #root, .flex.min-h-svh {
+            background: #ffffff !important;
+            color: #111827 !important;
+            display: block !important;
+            min-h-svh: 0 !important;
+            height: auto !important;
+          }
+
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+            background: #ffffff !important;
+          }
+
+          /* General text corrections for printing */
+          h2, h3, p, span, th, td, div {
+            color: #111827 !important;
+          }
+          .text-white {
+            color: #111827 !important;
+          }
+          .text-gray-400, .text-gray-500 {
+            color: #4b5563 !important;
+          }
+          .text-gray-300 {
+            color: #1f2937 !important;
+          }
+
+          /* Render cards as distinct light boxes */
+          .rounded-xl {
+            border: 1px solid #e5e7eb !important;
+            background: #f9fafb !important;
+            box-shadow: none !important;
+            color: #111827 !important;
+          }
+
+          /* Enforce side-by-side printing layout */
+          .grid-cols-1 {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+          }
+
+          /* Charts/List side-by-side layouts */
+          .grid.lg\:grid-cols-12 {
+            display: flex !important;
+            gap: 20px !important;
+          }
+          .lg\:col-span-7 {
+            flex: 7 !important;
+            width: auto !important;
+          }
+          .lg\:col-span-5 {
+            flex: 5 !important;
+            width: auto !important;
+          }
+
+          /* Chart grid lines and labels */
+          .recharts-cartesian-grid-horizontal line {
+            stroke: #e5e7eb !important;
+          }
+          .recharts-text {
+            fill: #374151 !important;
+          }
+        }
       `}</style>
 
       <div className="space-y-6">
@@ -156,9 +233,16 @@ export default function Reports() {
             <button
               onClick={handleExportCSV}
               disabled={loading || isExporting || !data}
-              className="rounded-lg bg-transit-orange hover:bg-transit-orange-hover px-4 py-2 text-xs font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="rounded-lg bg-transit-dark border border-transit-dark-border hover:border-gray-500 px-4 py-2 text-xs font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               📥 {isExporting ? 'Exporting...' : 'Export CSV'}
+            </button>
+            <button
+              onClick={() => window.print()}
+              disabled={loading || !data}
+              className="rounded-lg bg-transit-orange hover:bg-transit-orange-hover px-4 py-2 text-xs font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              📄 Export PDF
             </button>
           </div>
         </div>
