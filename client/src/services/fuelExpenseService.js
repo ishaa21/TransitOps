@@ -1,4 +1,7 @@
 import api from '../api'
+import { _getStubVehicles } from './vehicleService'
+import { _getStubTrips } from './tripService'
+import { _getStubLogs } from './maintenanceService'
 
 const USE_STUB = import.meta.env.VITE_USE_AUTH_STUB === 'true'
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -16,11 +19,6 @@ let stubExpenses = [
   { id: 1, vehicleId: 1, tripId: 1, tripRoute: 'Mumbai → Pune', vehicleName: 'Tata Prima 5530', vehicleRegNo: 'MH-12-AB-1234', toll: 240, misc: 500, total: 740, date: '2026-06-01T00:00:00.000Z' },
 ]
 let expNextId = 2
-
-const stubOpCosts = [
-  { vehicleId: 1, vehicleName: 'Tata Prima 5530', vehicleRegNo: 'MH-12-AB-1234', vehicleStatus: 'Available', totalFuelCost: 9600, totalFuelLiters: 120, totalMaintenanceCost: 85000, totalExpenses: 740, totalOperationalCost: 95340 },
-  { vehicleId: 2, vehicleName: 'Ashok Leyland 4220', vehicleRegNo: 'MH-14-CD-5678', vehicleStatus: 'OnTrip', totalFuelCost: 7600, totalFuelLiters: 95, totalMaintenanceCost: 24000, totalExpenses: 0, totalOperationalCost: 31600 },
-]
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // FUEL LOGS
@@ -46,11 +44,12 @@ export const createFuelLog = async (payload) => {
   } catch (error) {
     if (shouldFallbackToStub(error)) {
       await delay(300)
+      const v = _getStubVehicles().find(x => x.id === Number(payload.vehicleId))
       const newLog = {
         id: fuelNextId++,
         vehicleId: Number(payload.vehicleId),
-        vehicleName: payload.vehicleName ?? 'Unknown',
-        vehicleRegNo: payload.vehicleRegNo ?? 'Unknown',
+        vehicleName: v?.name ?? 'Unknown',
+        vehicleRegNo: v?.regNo ?? 'Unknown',
         liters: Number(payload.liters),
         cost: Number(payload.cost),
         date: payload.date,
@@ -86,13 +85,15 @@ export const createExpense = async (payload) => {
   } catch (error) {
     if (shouldFallbackToStub(error)) {
       await delay(300)
+      const v = _getStubVehicles().find(x => x.id === Number(payload.vehicleId))
+      const t = _getStubTrips().find(x => x.id === Number(payload.tripId))
       const newExp = {
         id: expNextId++,
         vehicleId: Number(payload.vehicleId),
         tripId: payload.tripId ? Number(payload.tripId) : null,
-        tripRoute: payload.tripRoute ?? null,
-        vehicleName: payload.vehicleName ?? 'Unknown',
-        vehicleRegNo: payload.vehicleRegNo ?? 'Unknown',
+        tripRoute: t ? `${t.source} → ${t.destination}` : null,
+        vehicleName: v?.name ?? 'Unknown',
+        vehicleRegNo: v?.regNo ?? 'Unknown',
         toll: Number(payload.toll),
         misc: Number(payload.misc),
         total: Number(payload.toll) + Number(payload.misc),
@@ -116,7 +117,33 @@ export const getAllOperationalCosts = async () => {
   } catch (error) {
     if (shouldFallbackToStub(error)) {
       await delay(300)
-      return [...stubOpCosts]
+      const vehicles = _getStubVehicles()
+      const fuelLogs = stubFuelLogs
+      const maintenanceLogs = _getStubLogs()
+      const expenses = stubExpenses
+
+      return vehicles.map(v => {
+        const vFuel = fuelLogs.filter(f => f.vehicleId === v.id)
+        const vMaint = maintenanceLogs.filter(m => m.vehicleId === v.id)
+        const vExp = expenses.filter(e => e.vehicleId === v.id)
+
+        const totalFuelCost = vFuel.reduce((sum, f) => sum + (f.cost ?? 0), 0)
+        const totalFuelLiters = vFuel.reduce((sum, f) => sum + (f.liters ?? 0), 0)
+        const totalMaintenanceCost = vMaint.reduce((sum, m) => sum + (m.cost ?? 0), 0)
+        const totalExpenses = vExp.reduce((sum, e) => sum + (e.toll ?? 0) + (e.misc ?? 0), 0)
+
+        return {
+          vehicleId: v.id,
+          vehicleName: v.name,
+          vehicleRegNo: v.regNo,
+          vehicleStatus: v.status,
+          totalFuelCost,
+          totalFuelLiters,
+          totalMaintenanceCost,
+          totalExpenses,
+          totalOperationalCost: totalFuelCost + totalMaintenanceCost + totalExpenses
+        }
+      })
     }
     throw error
   }
@@ -129,8 +156,13 @@ export const getVehicleOperationalCost = async (vehicleId) => {
   } catch (error) {
     if (shouldFallbackToStub(error)) {
       await delay(300)
-      return stubOpCosts.find((c) => c.vehicleId === Number(vehicleId)) ?? null
+      const all = await getAllOperationalCosts()
+      return all.find((c) => c.vehicleId === Number(vehicleId)) ?? null
     }
     throw error
   }
 }
+
+// ─── Stub helpers for cross-service linking ──────────────────────────────────
+export const _getStubFuelLogs = () => stubFuelLogs
+export const _getStubExpenses = () => stubExpenses
