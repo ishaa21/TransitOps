@@ -57,6 +57,8 @@ let stubVehicles = [
   },
 ]
 
+let stubNextId = 6
+
 const shouldFallbackToStub = (error) =>
   USE_STUB ||
   error.code === 'ERR_NETWORK' ||
@@ -71,6 +73,60 @@ export const getVehicles = async () => {
     if (shouldFallbackToStub(error)) {
       await delay(300)
       return [...stubVehicles]
+    }
+    throw error
+  }
+}
+
+export const createVehicle = async (payload) => {
+  try {
+    const { data } = await api.post('/api/vehicles', payload)
+    return data
+  } catch (error) {
+    if (shouldFallbackToStub(error)) {
+      await delay(300)
+      // Simulate uniqueness check
+      if (stubVehicles.some((v) => v.regNo === payload.regNo)) {
+        const err = new Error('Registration No. must be unique')
+        err.response = { status: 409, data: { message: 'Registration No. must be unique' } }
+        throw err
+      }
+      const newVehicle = { id: stubNextId++, ...payload }
+      stubVehicles.push(newVehicle)
+      return newVehicle
+    }
+    throw error
+  }
+}
+
+export const updateVehicle = async (id, payload) => {
+  try {
+    const { data } = await api.put(`/api/vehicles/${id}`, payload)
+    return data
+  } catch (error) {
+    if (shouldFallbackToStub(error)) {
+      await delay(300)
+      // Simulate uniqueness check (exclude self)
+      if (stubVehicles.some((v) => v.regNo === payload.regNo && v.id !== id)) {
+        const err = new Error('Registration No. must be unique')
+        err.response = { status: 409, data: { message: 'Registration No. must be unique' } }
+        throw err
+      }
+      stubVehicles = stubVehicles.map((v) => (v.id === id ? { ...v, ...payload } : v))
+      return stubVehicles.find((v) => v.id === id)
+    }
+    throw error
+  }
+}
+
+export const deleteVehicle = async (id) => {
+  try {
+    await api.delete(`/api/vehicles/${id}`)
+  } catch (error) {
+    if (shouldFallbackToStub(error)) {
+      await delay(300)
+      stubVehicles = stubVehicles.filter((v) => v.id !== id)
+      return
     }
     throw error
   }
