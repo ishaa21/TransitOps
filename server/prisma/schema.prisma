@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      String
+  createdAt DateTime @default(now())
+}
+
+model Vehicle {
+  id              Int      @id @default(autoincrement())
+  regNo           String   @unique
+  name            String
+  type            String
+  capacityKg      Float
+  odometer        Float
+  acquisitionCost Float
+  status          String   @default("Available")
+}
+
+model Driver {
+  id              Int      @id @default(autoincrement())
+  name            String
+  licenseNo       String
+  licenseCategory String
+  licenseExpiry   DateTime
+  contact         String
+  safetyScore     Int
+  status          String   @default("Available")
+}
+
+model Trip {
+  id                Int     @id @default(autoincrement())
+  source            String
+  destination       String
+  vehicleId         Int
+  driverId          Int
+  cargoWeightKg     Float
+  plannedDistanceKm Float
+  status            String  @default("Draft")
+  revenue           Float?
+}
+
+model MaintenanceLog {
+  id          Int      @id @default(autoincrement())
+  vehicleId   Int
+  serviceType String
+  cost        Float
+  date        DateTime
+  status      String   @default("Active")
+}
+
+model FuelLog {
+  id        Int      @id @default(autoincrement())
+  vehicleId Int
+  liters    Float
+  cost      Float
+  date      DateTime
+}
+
+model Expense {
+  id        Int      @id @default(autoincrement())
+  tripId    Int?
+  vehicleId Int
+  toll      Float
+  misc      Float
+  date      DateTime
+}
