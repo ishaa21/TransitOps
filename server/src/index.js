@@ -7,6 +7,7 @@ const dashboardRoutes = require('./routes/dashboard')
 const driverRoutes = require('./routes/drivers')
 const vehicleRoutes = require('./routes/vehicles')
 const tripRoutes = require('./routes/trips')
+const maintenanceRoutes = require('./routes/maintenance')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -23,6 +24,7 @@ app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/drivers', driverRoutes)
 app.use('/api/vehicles', vehicleRoutes)
 app.use('/api/trips', tripRoutes)
+app.use('/api/maintenance', maintenanceRoutes)
 
 app.use((err, _req, res, _next) => {
   console.error(err)
