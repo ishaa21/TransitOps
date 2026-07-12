@@ -5,6 +5,8 @@ const cors = require('cors')
 const authRoutes = require('./routes/auth')
 const dashboardRoutes = require('./routes/dashboard')
 const driverRoutes = require('./routes/drivers')
+const vehicleRoutes = require('./routes/vehicles')
+const tripRoutes = require('./routes/trips')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -19,6 +21,8 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/drivers', driverRoutes)
+app.use('/api/vehicles', vehicleRoutes)
+app.use('/api/trips', tripRoutes)
 
 app.use((err, _req, res, _next) => {
   console.error(err)
