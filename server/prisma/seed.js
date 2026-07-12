@@ -213,23 +213,29 @@ async function main() {
 
   console.log(`Seeded ${trips.length} trips.`)
 
-  console.log('Seeding default users...')
-  const passwordHash = await bcrypt.hash('password123', 10)
-  const defaultUsers = [
-    { email: 'fleet.m@transitops.in', password: passwordHash, role: 'FleetManager' },
-    { email: 'raven.k@transitops.in', password: passwordHash, role: 'Dispatcher' },
-    { email: 'safety.o@transitops.in', password: passwordHash, role: 'SafetyOfficer' },
-    { email: 'analyst.f@transitops.in', password: passwordHash, role: 'FinancialAnalyst' },
+  console.log('Seeding default user accounts...')
+  const passwordHashDefault = await bcrypt.hash('password', 10)
+  const passwordHashAlt = await bcrypt.hash('password123', 10)
+  
+  const usersToSeed = [
+    { email: 'fleet_manager@transitops.in', password: passwordHashDefault, role: 'FleetManager' },
+    { email: 'dispatcher@transitops.in', password: passwordHashDefault, role: 'Dispatcher' },
+    { email: 'safety_officer@transitops.in', password: passwordHashDefault, role: 'SafetyOfficer' },
+    { email: 'financial_analyst@transitops.in', password: passwordHashDefault, role: 'FinancialAnalyst' },
+    { email: 'fleet.m@transitops.in', password: passwordHashAlt, role: 'FleetManager' },
+    { email: 'raven.k@transitops.in', password: passwordHashAlt, role: 'Dispatcher' },
+    { email: 'safety.o@transitops.in', password: passwordHashAlt, role: 'SafetyOfficer' },
+    { email: 'analyst.f@transitops.in', password: passwordHashAlt, role: 'FinancialAnalyst' },
   ]
 
-  for (const user of defaultUsers) {
+  for (const u of usersToSeed) {
     await prisma.user.upsert({
-      where: { email: user.email },
-      update: user,
-      create: user,
+      where: { email: u.email },
+      update: { role: u.role, password: u.password },
+      create: { email: u.email, role: u.role, password: u.password },
     })
   }
-  console.log(`Seeded ${defaultUsers.length} users.`)
+  console.log(`Seeded ${usersToSeed.length} user accounts.`)
 }
 
 main()

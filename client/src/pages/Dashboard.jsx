@@ -504,9 +504,10 @@ export default function Dashboard() {
     const handleFocus = () => loadDashboard()
     window.addEventListener('focus', handleFocus)
 
+    // Re-fetch periodically every 60 seconds (polling)
     const interval = setInterval(() => {
       loadDashboard()
-    }, 10000)
+    }, 60000)
 
     return () => {
       window.removeEventListener('focus', handleFocus)

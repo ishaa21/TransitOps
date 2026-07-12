@@ -36,7 +36,7 @@ export default function Drivers() {
   const [formStatus, setFormStatus] = useState('Available')
   const [formError, setFormError] = useState('')
 
-  const canWrite = hasRole(user, 'safety_officer', 'SafetyOfficer')
+  const canWrite = hasRole(user, 'safety_officer', 'SafetyOfficer', 'fleet_manager', 'FleetManager')
   const isAuthorized = hasRole(
     user,
     'safety_officer',
