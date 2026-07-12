@@ -25,3 +25,9 @@ credentials.json
 *.json.key
 *.pem
 *.key
+
+# Local Databases & Logs
+*.db
+*.db-journal
+demo-videos/
+demo/
