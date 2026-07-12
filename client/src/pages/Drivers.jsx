@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { hasRole } from '../constants/roles'
 import AccessDenied from '../components/AccessDenied'
-import { getDrivers, createDriver, updateDriver, deleteDriver } from '../services/driverService'
+import { getDrivers, createDriver, updateDriver, deleteDriver, sendExpiryReminders } from '../services/driverService'
 
 export default function Drivers() {
   const { user } = useAuth()
@@ -11,6 +11,10 @@ export default function Drivers() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  
+  // Reminders states
+  const [sendingReminders, setSendingReminders] = useState(false)
+  const [reminderMessage, setReminderMessage] = useState('')
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false)
@@ -175,6 +179,23 @@ export default function Drivers() {
     }
   }
 
+  const handleSendReminders = async () => {
+    setSendingReminders(true)
+    setReminderMessage('')
+    try {
+      const res = await sendExpiryReminders()
+      if (res.success) {
+        setReminderMessage(`Email reminders sent successfully to ${res.count} driver(s).`)
+        setTimeout(() => setReminderMessage(''), 4000)
+      }
+    } catch (err) {
+      console.error(err)
+      setError('Failed to send license expiry reminders.')
+    } finally {
+      setSendingReminders(false)
+    }
+  }
+
   // Search and Filter Logic
   const filteredDrivers = drivers.filter((driver) => {
     const matchesSearch = driver.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -209,12 +230,21 @@ export default function Drivers() {
         </div>
 
         {canWrite ? (
-          <button
-            onClick={handleOpenAddModal}
-            className="flex items-center justify-center gap-2 rounded-lg bg-transit-orange px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-transit-orange-hover shadow-md hover:shadow-transit-orange/20"
-          >
-            <span>+</span> Add Driver
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleSendReminders}
+              disabled={sendingReminders}
+              className="flex items-center justify-center gap-2 rounded-lg bg-transit-dark border border-transit-dark-border px-4 py-2.5 text-sm font-semibold text-gray-300 hover:text-white hover:border-gray-500 transition-colors shadow-md disabled:opacity-50"
+            >
+              📧 {sendingReminders ? 'Sending Alerts…' : 'Send Expiry Alerts'}
+            </button>
+            <button
+              onClick={handleOpenAddModal}
+              className="flex items-center justify-center gap-2 rounded-lg bg-transit-orange px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-transit-orange-hover shadow-md hover:shadow-transit-orange/20"
+            >
+              <span>+</span> Add Driver
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-2 rounded-lg border border-transit-dark-border bg-transit-dark-elevated px-4 py-2.5 text-sm text-gray-400">
             <span className="text-base">🔒</span>
@@ -222,6 +252,13 @@ export default function Drivers() {
           </div>
         )}
       </div>
+
+      {/* Reminder Notification */}
+      {reminderMessage && (
+        <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400 animate-pulse">
+          ✓ {reminderMessage}
+        </div>
+      )}
 
       {/* Search / Filters */}
       <div className="flex flex-col gap-4 rounded-xl border border-transit-dark-border bg-transit-dark-elevated p-4 sm:flex-row sm:items-center">

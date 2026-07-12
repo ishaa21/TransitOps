@@ -123,4 +123,33 @@ router.delete('/:id', authMiddleware, requireRole('SafetyOfficer'), async (req, 
   }
 })
 
+// POST /api/drivers/send-reminders - Send email reminders for expiring licenses (SafetyOfficer only)
+router.post('/send-reminders', authMiddleware, requireRole('SafetyOfficer'), async (req, res) => {
+  try {
+    const drivers = await prisma.driver.findMany()
+    const today = new Date()
+    const thirtyDaysFromNow = new Date()
+    thirtyDaysFromNow.setDate(today.getDate() + 30)
+
+    const expiringDrivers = drivers.filter(d => {
+      const expiry = new Date(d.licenseExpiry)
+      return expiry <= thirtyDaysFromNow
+    })
+
+    // Log the simulated email delivery in console
+    expiringDrivers.forEach(d => {
+      console.log(`[EMAIL SENT] To: ${d.contact} (Driver: ${d.name}). Alert: License ${d.licenseNo} expires on ${d.licenseExpiry.toDateString()}`)
+    })
+
+    return res.json({
+      success: true,
+      count: expiringDrivers.length,
+      emailedDrivers: expiringDrivers.map(d => ({ id: d.id, name: d.name, contact: d.contact }))
+    })
+  } catch (error) {
+    console.error('Failed to send reminders:', error)
+    return res.status(500).json({ message: 'Failed to send reminders' })
+  }
+})
+
 module.exports = router

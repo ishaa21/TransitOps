@@ -87,7 +87,15 @@ export default function Vehicles() {
   const [showAddModal, setShowAddModal]       = useState(false)
   const [showEditModal, setShowEditModal]     = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showDocsModal, setShowDocsModal]     = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState(null)
+
+  // Document states
+  const [docsList, setDocsList] = useState([])
+  const [newDocType, setNewDocType] = useState('Insurance Policy')
+  const [newDocExpiry, setNewDocExpiry] = useState('')
+  const [newDocFile, setNewDocFile] = useState('')
+  const [docError, setDocError] = useState('')
 
   // Form
   const [form, setForm]         = useState(emptyForm())
@@ -171,6 +179,72 @@ export default function Vehicles() {
   const handleOpenDelete = (vehicle) => {
     setSelectedVehicle(vehicle)
     setShowDeleteModal(true)
+  }
+
+  // ── Document management handlers ───────────────────────────────────────────
+  const handleOpenDocs = (vehicle) => {
+    setSelectedVehicle(vehicle)
+    
+    // Seed and read documents from localStorage
+    const storageKey = `transitops_docs_${vehicle.id}`
+    const stored = localStorage.getItem(storageKey)
+    let list = []
+    
+    if (stored) {
+      list = JSON.parse(stored)
+    } else {
+      // Seed with rich default documents
+      list = [
+        {
+          id: 1,
+          type: 'Insurance Policy',
+          file: 'insurance_policy_2026.pdf',
+          expiry: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), // valid
+        },
+        {
+          id: 2,
+          type: 'Pollution Certificate (PUC)',
+          file: 'puc_certificate_mh.pdf',
+          expiry: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), // expiring soon (under 30 days)
+        }
+      ]
+      localStorage.setItem(storageKey, JSON.stringify(list))
+    }
+    
+    setDocsList(list)
+    setNewDocType('Insurance Policy')
+    setNewDocExpiry('')
+    setNewDocFile('')
+    setDocError('')
+    setShowDocsModal(true)
+  }
+
+  const handleAddDoc = (e) => {
+    e.preventDefault()
+    setDocError('')
+    if (!newDocExpiry) { setDocError('Please select an expiry date'); return }
+    if (!newDocFile.trim()) { setDocError('Please specify a file name'); return }
+
+    const newDoc = {
+      id: Date.now(),
+      type: newDocType,
+      file: newDocFile.trim(),
+      expiry: newDocExpiry,
+    }
+
+    const updated = [...docsList, newDoc]
+    setDocsList(updated)
+    localStorage.setItem(`transitops_docs_${selectedVehicle.id}`, JSON.stringify(updated))
+    
+    // Clear inputs
+    setNewDocExpiry('')
+    setNewDocFile('')
+  }
+
+  const handleDeleteDoc = (docId) => {
+    const updated = docsList.filter((doc) => doc.id !== docId)
+    setDocsList(updated)
+    localStorage.setItem(`transitops_docs_${selectedVehicle.id}`, JSON.stringify(updated))
   }
 
   // ── Submit handlers ────────────────────────────────────────────────────────
@@ -552,6 +626,12 @@ export default function Vehicles() {
                       <td className="px-5 py-4 text-right">
                         <div className="flex justify-end gap-2">
                           <button
+                            onClick={() => handleOpenDocs(vehicle)}
+                            className="rounded border border-transit-dark-border bg-transit-dark px-2.5 py-1 text-xs text-amber-400 transition-colors hover:border-amber-400 hover:text-white"
+                          >
+                            Docs
+                          </button>
+                          <button
                             id={`edit-vehicle-${vehicle.id}`}
                             onClick={() => handleOpenEdit(vehicle)}
                             className="rounded border border-transit-dark-border bg-transit-dark px-2.5 py-1 text-xs text-blue-400 transition-colors hover:border-blue-400 hover:text-white"
@@ -653,6 +733,160 @@ export default function Vehicles() {
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
               >
                 {submitting ? 'Deleting…' : 'Delete Vehicle'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════ VEHICLE DOCUMENTS MODAL ═════════════════════ */}
+      {showDocsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-2xl rounded-xl border border-transit-dark-border bg-transit-dark-elevated p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Close */}
+            <button
+              onClick={() => setShowDocsModal(false)}
+              className="absolute right-4 top-4 text-gray-500 transition-colors hover:text-white"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-lg font-bold text-white">Vehicle Documents</h3>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Manage compliance documents for{' '}
+              <span className="font-semibold text-white">{selectedVehicle?.name}</span>{' '}
+              (<span className="font-mono text-transit-orange">{selectedVehicle?.regNo}</span>).
+            </p>
+
+            {/* List existing documents */}
+            <div className="mt-6 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">Uploaded Certificates</h4>
+              {docsList.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-transit-dark-border p-6 text-center text-sm text-gray-500">
+                  No documents uploaded for this vehicle.
+                </div>
+              ) : (
+                <div className="divide-y divide-transit-dark-border rounded-lg border border-transit-dark-border bg-transit-dark overflow-hidden">
+                  {docsList.map((doc) => {
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    const expDate = new Date(doc.expiry)
+                    const thirtyDays = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+                    let statusLabel = 'Valid'
+                    let statusColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+
+                    if (expDate < today) {
+                      statusLabel = 'Expired'
+                      statusColor = 'bg-red-500/10 text-red-400 border-red-500/20'
+                    } else if (expDate <= thirtyDays) {
+                      statusLabel = 'Expiring Soon'
+                      statusColor = 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    }
+
+                    return (
+                      <div key={doc.id} className="flex items-center justify-between px-4 py-3 text-sm hover:bg-white/[0.015]">
+                        <div className="space-y-0.5">
+                          <p className="font-semibold text-white">{doc.type}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
+                            <span>File: <span className="font-mono text-gray-400">{doc.file}</span></span>
+                            <span>•</span>
+                            <span>Expires: <span className="text-gray-400">{doc.expiry}</span></span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusColor}`}>
+                            {statusLabel}
+                          </span>
+                          
+                          {canWrite && (
+                            <button
+                              onClick={() => handleDeleteDoc(doc.id)}
+                              className="text-red-400 hover:text-red-300 transition-colors p-1"
+                              title="Delete Document"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Form to add a new document (FleetManager only) */}
+            {canWrite && (
+              <div className="mt-8 border-t border-transit-dark-border pt-6">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Add Document</h4>
+                
+                {docError && (
+                  <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs text-red-400">
+                    ✕ {docError}
+                  </div>
+                )}
+
+                <form onSubmit={handleAddDoc} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Document Type</label>
+                    <select
+                      value={newDocType}
+                      onChange={(e) => setNewDocType(e.target.value)}
+                      className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-xs text-white outline-none focus:border-transit-orange"
+                    >
+                      <option value="Insurance Policy">Insurance Policy</option>
+                      <option value="Pollution Certificate (PUC)">Pollution Certificate (PUC)</option>
+                      <option value="Registration Certificate (RC)">Registration Certificate (RC)</option>
+                      <option value="Fitness Certificate">Fitness Certificate</option>
+                      <option value="Road Permit">Road Permit</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">File Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. fitness_cert.pdf"
+                      value={newDocFile}
+                      onChange={(e) => setNewDocFile(e.target.value)}
+                      className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-xs text-white outline-none focus:border-transit-orange"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Expiry Date</label>
+                    <input
+                      type="date"
+                      required
+                      value={newDocExpiry}
+                      onChange={(e) => setNewDocExpiry(e.target.value)}
+                      className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-xs text-white outline-none focus:border-transit-orange"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3 flex justify-end">
+                    <button
+                      type="submit"
+                      className="rounded-lg bg-transit-orange px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-transit-orange-hover shadow-md"
+                    >
+                      Add Document
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="mt-8 flex justify-end border-t border-transit-dark-border pt-4">
+              <button
+                type="button"
+                onClick={() => setShowDocsModal(false)}
+                className="rounded-lg border border-transit-dark-border bg-transit-dark px-4 py-2 text-sm text-gray-300 transition-colors hover:text-white"
+              >
+                Close
               </button>
             </div>
           </div>

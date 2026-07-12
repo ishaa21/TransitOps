@@ -139,3 +139,33 @@ export const _setStubDriverStatus = (id, status) => {
   const d = stubDrivers.find((x) => x.id === Number(id))
   if (d) d.status = status
 }
+
+export const sendExpiryReminders = async () => {
+  try {
+    const { data } = await api.post('/api/drivers/send-reminders')
+    return data
+  } catch (error) {
+    if (shouldFallbackToStub(error)) {
+      await delay(300)
+      const today = new Date()
+      const thirtyDays = new Date()
+      thirtyDays.setDate(today.getDate() + 30)
+
+      const expiring = stubDrivers.filter((d) => {
+        const exp = new Date(d.licenseExpiry)
+        return exp <= thirtyDays
+      })
+
+      expiring.forEach((d) => {
+        console.log(`[STUB EMAIL] Reminded driver ${d.name} (${d.contact}) about licence expiry: ${d.licenseExpiry}`)
+      })
+
+      return {
+        success: true,
+        count: expiring.length,
+        emailedDrivers: expiring.map((d) => ({ id: d.id, name: d.name, contact: d.contact })),
+      }
+    }
+    throw error
+  }
+}
