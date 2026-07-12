@@ -51,3 +51,81 @@ body {
 .form-input:focus {
   border-color: var(--color-transit-orange);
 }
+
+/* ── Light Mode Styles ───────────────────────────────── */
+body.light-mode {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+}
+
+body.light-mode .bg-transit-dark-elevated {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+body.light-mode .bg-transit-dark {
+  background-color: #f9fafb !important;
+  border-color: #e5e7eb !important;
+}
+
+body.light-mode .border-transit-dark-border {
+  border-color: #e5e7eb !important;
+}
+
+body.light-mode .text-white {
+  color: #111827 !important;
+}
+
+body.light-mode .text-gray-400 {
+  color: #4b5563 !important;
+}
+
+body.light-mode .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+body.light-mode .text-gray-300 {
+  color: #1f2937 !important;
+}
+
+body.light-mode .text-gray-800 {
+  color: #1f2937 !important;
+}
+
+body.light-mode .text-gray-900 {
+  color: #111827 !important;
+}
+
+body.light-mode .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-mode input,
+body.light-mode select,
+body.light-mode textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+
+body.light-mode input::placeholder {
+  color: #9ca3af !important;
+}
+
+body.light-mode .divide-transit-dark-border > * + * {
+  border-color: #e5e7eb !important;
+}
+
+body.light-mode .hover\:bg-white\/\[0\.025\]:hover {
+  background-color: rgba(0, 0, 0, 0.015) !important;
+}
+
+body.light-mode .bg-transit-orange\/15 {
+  background-color: rgba(234, 88, 12, 0.1) !important;
+}
+
+body.light-mode select option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+

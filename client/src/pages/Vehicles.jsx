@@ -83,6 +83,10 @@ export default function Vehicles() {
   const [typeFilter, setTypeFilter]     = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
 
+  // Sorting
+  const [sortField, setSortField] = useState('id')
+  const [sortOrder, setSortOrder] = useState('asc')
+
   // Modals
   const [showAddModal, setShowAddModal]       = useState(false)
   const [showEditModal, setShowEditModal]     = useState(false)
@@ -121,16 +125,39 @@ export default function Vehicles() {
 
   useEffect(() => { fetchVehicles() }, [])
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
-  const filteredVehicles = vehicles.filter((v) => {
-    const q = searchQuery.toLowerCase()
-    const matchSearch =
-      v.regNo.toLowerCase().includes(q) ||
-      v.name.toLowerCase().includes(q)
-    const matchType   = typeFilter   === 'All' || v.type   === typeFilter
-    const matchStatus = statusFilter === 'All' || v.status === statusFilter
-    return matchSearch && matchType && matchStatus
-  })
+  // ── Sorting & Filtering ────────────────────────────────────────────────────
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortOrder('asc')
+    }
+  }
+
+  const sortedVehicles = [...vehicles]
+    .filter((v) => {
+      const q = searchQuery.toLowerCase()
+      const matchSearch =
+        v.regNo.toLowerCase().includes(q) ||
+        v.name.toLowerCase().includes(q)
+      const matchType   = typeFilter   === 'All' || v.type   === typeFilter
+      const matchStatus = statusFilter === 'All' || v.status === statusFilter
+      return matchSearch && matchType && matchStatus
+    })
+    .sort((a, b) => {
+      let valA = a[sortField]
+      let valB = b[sortField]
+
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase()
+        valB = valB.toLowerCase()
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
 
   // ── Summary counts ─────────────────────────────────────────────────────────
   const counts = vehicles.reduce((acc, v) => {
@@ -548,7 +575,7 @@ export default function Vehicles() {
               Retry
             </button>
           </div>
-        ) : filteredVehicles.length === 0 ? (
+        ) : sortedVehicles.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center p-6 text-center">
             <span className="text-3xl text-gray-500">🚛</span>
             <p className="mt-2 font-medium text-gray-400">No vehicles found</p>
@@ -563,18 +590,32 @@ export default function Vehicles() {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-transit-dark-border bg-transit-dark/50 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  <th className="px-5 py-4">Reg No.</th>
-                  <th className="px-5 py-4">Name / Model</th>
-                  <th className="px-5 py-4">Type</th>
-                  <th className="px-5 py-4 text-right">Capacity (kg)</th>
-                  <th className="px-5 py-4 text-right">Odometer (km)</th>
-                  <th className="px-5 py-4 text-right">Acq. Cost</th>
-                  <th className="px-5 py-4">Status</th>
-                  {canWrite && <th className="px-5 py-4 text-right">Actions</th>}
+                  <th className="px-5 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('regNo')}>
+                    Reg No. {sortField === 'regNo' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-5 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('name')}>
+                    Name / Model {sortField === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-5 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('type')}>
+                    Type {sortField === 'type' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-5 py-4 text-right cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('capacityKg')}>
+                    Capacity (kg) {sortField === 'capacityKg' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-5 py-4 text-right cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('odometer')}>
+                    Odometer (km) {sortField === 'odometer' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-5 py-4 text-right cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('acquisitionCost')}>
+                    Acq. Cost {sortField === 'acquisitionCost' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-5 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('status')}>
+                    Status {sortField === 'status' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  {canWrite && <th className="px-5 py-4 text-right select-none">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-transit-dark-border text-sm text-gray-300">
-                {filteredVehicles.map((vehicle) => (
+                {sortedVehicles.map((vehicle) => (
                   <tr key={vehicle.id} className="transition-colors hover:bg-white/[0.025]">
                     {/* Reg No */}
                     <td className="px-5 py-4 font-mono text-sm font-semibold text-transit-orange">
@@ -655,7 +696,7 @@ export default function Vehicles() {
 
             {/* Row count footer */}
             <div className="border-t border-transit-dark-border px-5 py-3 text-xs text-gray-500">
-              Showing {filteredVehicles.length} of {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''}
+              Showing {sortedVehicles.length} of {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''}
             </div>
           </div>
         )}

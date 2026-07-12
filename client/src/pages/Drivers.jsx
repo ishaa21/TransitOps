@@ -11,6 +11,10 @@ export default function Drivers() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+
+  // Sorting
+  const [sortField, setSortField] = useState('name')
+  const [sortOrder, setSortOrder] = useState('asc')
   
   // Reminders states
   const [sendingReminders, setSendingReminders] = useState(false)
@@ -196,12 +200,35 @@ export default function Drivers() {
     }
   }
 
-  // Search and Filter Logic
-  const filteredDrivers = drivers.filter((driver) => {
-    const matchesSearch = driver.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === 'All' || driver.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  // Search, Filter and Sort Logic
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortOrder('asc')
+    }
+  }
+
+  const sortedDrivers = [...drivers]
+    .filter((driver) => {
+      const matchesSearch = driver.name.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesStatus = statusFilter === 'All' || driver.status === statusFilter
+      return matchesSearch && matchesStatus
+    })
+    .sort((a, b) => {
+      let valA = a[sortField]
+      let valB = b[sortField]
+
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase()
+        valB = valB.toLowerCase()
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
 
   // Helper safety score formatting
   const getSafetyScoreColor = (score) => {
@@ -300,7 +327,7 @@ export default function Drivers() {
             <p className="text-red-400">{error}</p>
             <button onClick={fetchDrivers} className="mt-2 text-sm text-blue-400 hover:underline">Retry</button>
           </div>
-        ) : filteredDrivers.length === 0 ? (
+        ) : sortedDrivers.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center text-center p-6">
             <span className="text-2xl text-gray-500">📂</span>
             <p className="mt-2 text-gray-400 font-medium">No drivers found</p>
@@ -311,18 +338,32 @@ export default function Drivers() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-transit-dark-border bg-transit-dark/40 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  <th className="px-6 py-4">Name</th>
-                  <th className="px-6 py-4">License No</th>
-                  <th className="px-6 py-4">Category</th>
-                  <th className="px-6 py-4">Expiry Date</th>
-                  <th className="px-6 py-4">Contact</th>
-                  <th className="px-6 py-4">Safety Score</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('name')}>
+                    Name {sortField === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('licenseNo')}>
+                    License No {sortField === 'licenseNo' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('licenseCategory')}>
+                    Category {sortField === 'licenseCategory' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('licenseExpiry')}>
+                    Expiry Date {sortField === 'licenseExpiry' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('contact')}>
+                    Contact {sortField === 'contact' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('safetyScore')}>
+                    Safety Score {sortField === 'safetyScore' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-6 py-4 cursor-pointer hover:text-white select-none transition-colors" onClick={() => handleSort('status')}>
+                    Status {sortField === 'status' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th className="px-6 py-4 text-right select-none">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-transit-dark-border text-sm text-gray-300">
-                {filteredDrivers.map((driver) => {
+                {sortedDrivers.map((driver) => {
                   const expired = isLicenseExpired(driver.licenseExpiry)
                   return (
                     <tr key={driver.id} className="transition-colors hover:bg-white/[0.02]">

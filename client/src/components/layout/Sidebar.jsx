@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { hasRole } from '../../constants/roles'
@@ -15,6 +16,24 @@ const navItems = [
 
 export default function Sidebar({ open = false, onClose }) {
   const { user } = useAuth()
+  
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('theme')
+    return saved || 'dark'
+  })
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light-mode')
+    } else {
+      document.body.classList.remove('light-mode')
+    }
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark')
+  }
 
   const filteredNavItems = navItems.filter((item) => {
     if (item.roles.includes('*')) return true
@@ -71,7 +90,14 @@ export default function Sidebar({ open = false, onClose }) {
         ))}
       </nav>
 
-      <div className="border-t border-transit-dark-border px-6 py-4">
+      <div className="border-t border-transit-dark-border px-6 py-4 flex flex-col gap-3">
+        <button
+          onClick={toggleTheme}
+          className="flex items-center justify-between w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-xs font-semibold text-gray-300 hover:text-white transition-colors"
+        >
+          <span>Theme: {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}</span>
+          <span className="text-[10px] text-gray-400">Toggle</span>
+        </button>
         <p className="text-[10px] uppercase tracking-wider text-gray-500">
           TransitOps © 2026 · RBAC Enabled
         </p>
