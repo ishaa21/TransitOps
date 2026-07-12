@@ -134,3 +134,35 @@ export const dispatchTrip = async (id) => {
     throw error
   }
 }
+
+export const completeTrip = async (id, { finalOdometer, fuelConsumedLiters }) => {
+  try {
+    const { data } = await api.put(`/api/trips/${id}/complete`, { finalOdometer, fuelConsumedLiters })
+    return data
+  } catch (error) {
+    if (shouldFallbackToStub(error)) {
+      await delay(300)
+      const index = stubTrips.findIndex((t) => t.id === Number(id))
+      if (index === -1) throw new Error('Trip not found')
+      stubTrips[index] = { ...stubTrips[index], status: 'Completed' }
+      return stubTrips[index]
+    }
+    throw error
+  }
+}
+
+export const cancelDispatchedTrip = async (id) => {
+  try {
+    const { data } = await api.put(`/api/trips/${id}/cancel`)
+    return data
+  } catch (error) {
+    if (shouldFallbackToStub(error)) {
+      await delay(300)
+      const index = stubTrips.findIndex((t) => t.id === Number(id))
+      if (index === -1) throw new Error('Trip not found')
+      stubTrips[index] = { ...stubTrips[index], status: 'Cancelled' }
+      return stubTrips[index]
+    }
+    throw error
+  }
+}

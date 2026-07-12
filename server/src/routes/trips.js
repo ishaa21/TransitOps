@@ -200,4 +200,152 @@ router.put('/:id/dispatch', authMiddleware, async (req, res) => {
   }
 })
 
+// PUT /api/trips/:id/complete - Complete a dispatched trip (records odometer + fuel)
+router.put('/:id/complete', authMiddleware, async (req, res) => {
+  const { id } = req.params
+  const tripId = parseInt(id, 10)
+  if (isNaN(tripId)) {
+    return res.status(400).json({ message: 'Invalid trip ID' })
+  }
+
+  const { finalOdometer, fuelConsumedLiters } = req.body
+
+  if (finalOdometer === undefined || fuelConsumedLiters === undefined) {
+    return res.status(400).json({ message: 'finalOdometer and fuelConsumedLiters are required' })
+  }
+
+  const odometerVal = parseFloat(finalOdometer)
+  const fuelVal = parseFloat(fuelConsumedLiters)
+
+  if (isNaN(odometerVal) || odometerVal < 0) {
+    return res.status(400).json({ message: 'finalOdometer must be a non-negative number' })
+  }
+  if (isNaN(fuelVal) || fuelVal < 0) {
+    return res.status(400).json({ message: 'fuelConsumedLiters must be a non-negative number' })
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const trip = await tx.trip.findUnique({ where: { id: tripId } })
+      if (!trip) throw new Error('TripNotFound')
+      if (trip.status !== 'Dispatched') throw new Error('TripNotDispatched')
+
+      const vehicle = await tx.vehicle.findUnique({ where: { id: trip.vehicleId } })
+      if (!vehicle) throw new Error('VehicleNotFound')
+
+      if (odometerVal < vehicle.odometer) {
+        throw new Error(`OdometerRegression:${vehicle.odometer}`)
+      }
+
+      // Update trip status
+      const updatedTrip = await tx.trip.update({
+        where: { id: tripId },
+        data: { status: 'Completed' }
+      })
+
+      // Restore vehicle to Available and update its odometer
+      await tx.vehicle.update({
+        where: { id: trip.vehicleId },
+        data: { status: 'Available', odometer: odometerVal }
+      })
+
+      // Restore driver to Available
+      await tx.driver.update({
+        where: { id: trip.driverId },
+        data: { status: 'Available' }
+      })
+
+      // Record fuel log
+      await tx.fuelLog.create({
+        data: {
+          vehicleId: trip.vehicleId,
+          liters: fuelVal,
+          cost: 0, // cost can be filled in separately
+          date: new Date()
+        }
+      })
+
+      return updatedTrip
+    })
+
+    // Resolve names for response
+    const [freshVehicle, freshDriver] = await Promise.all([
+      prisma.vehicle.findUnique({ where: { id: result.vehicleId }, select: { id: true, name: true, regNo: true, odometer: true } }),
+      prisma.driver.findUnique({ where: { id: result.driverId }, select: { id: true, name: true } })
+    ])
+
+    return res.json({
+      ...result,
+      vehicleName: freshVehicle?.name ?? 'Unknown',
+      vehicleRegNo: freshVehicle?.regNo ?? 'Unknown',
+      vehicleOdometer: freshVehicle?.odometer ?? null,
+      driverName: freshDriver?.name ?? 'Unknown'
+    })
+  } catch (error) {
+    console.error('Complete transaction error:', error)
+    if (error.message === 'TripNotFound') return res.status(404).json({ message: 'Trip not found' })
+    if (error.message === 'TripNotDispatched') return res.status(400).json({ message: 'Only Dispatched trips can be completed' })
+    if (error.message === 'VehicleNotFound') return res.status(400).json({ message: 'Assigned vehicle not found' })
+    if (error.message.startsWith('OdometerRegression:')) {
+      const current = error.message.split(':')[1]
+      return res.status(400).json({ message: `Final odometer (${odometerVal} km) must be ≥ current odometer (${current} km)` })
+    }
+    return res.status(500).json({ message: 'Failed to complete trip' })
+  }
+})
+
+// PUT /api/trips/:id/cancel - Cancel a dispatched trip (restores vehicle + driver)
+router.put('/:id/cancel', authMiddleware, async (req, res) => {
+  const { id } = req.params
+  const tripId = parseInt(id, 10)
+  if (isNaN(tripId)) {
+    return res.status(400).json({ message: 'Invalid trip ID' })
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const trip = await tx.trip.findUnique({ where: { id: tripId } })
+      if (!trip) throw new Error('TripNotFound')
+      if (trip.status !== 'Dispatched') throw new Error('TripNotDispatched')
+
+      // Update trip status
+      const updatedTrip = await tx.trip.update({
+        where: { id: tripId },
+        data: { status: 'Cancelled' }
+      })
+
+      // Restore vehicle to Available
+      await tx.vehicle.update({
+        where: { id: trip.vehicleId },
+        data: { status: 'Available' }
+      })
+
+      // Restore driver to Available
+      await tx.driver.update({
+        where: { id: trip.driverId },
+        data: { status: 'Available' }
+      })
+
+      return updatedTrip
+    })
+
+    const [freshVehicle, freshDriver] = await Promise.all([
+      prisma.vehicle.findUnique({ where: { id: result.vehicleId }, select: { id: true, name: true, regNo: true } }),
+      prisma.driver.findUnique({ where: { id: result.driverId }, select: { id: true, name: true } })
+    ])
+
+    return res.json({
+      ...result,
+      vehicleName: freshVehicle?.name ?? 'Unknown',
+      vehicleRegNo: freshVehicle?.regNo ?? 'Unknown',
+      driverName: freshDriver?.name ?? 'Unknown'
+    })
+  } catch (error) {
+    console.error('Cancel transaction error:', error)
+    if (error.message === 'TripNotFound') return res.status(404).json({ message: 'Trip not found' })
+    if (error.message === 'TripNotDispatched') return res.status(400).json({ message: 'Only Dispatched trips can be cancelled via this endpoint' })
+    return res.status(500).json({ message: 'Failed to cancel trip' })
+  }
+})
+
 module.exports = router
