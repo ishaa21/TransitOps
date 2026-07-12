@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
-import { getTrips, createTrip, updateTripStatus } from '../services/tripService'
-import { getVehicles } from '../services/vehicleService'
+import { useState, useEffect, useCallback } from 'react'
+import { getTrips, createTrip, updateTripStatus, dispatchTrip } from '../services/tripService'
+import { getVehicles, getAvailableVehicles } from '../services/vehicleService'
 import { getDrivers } from '../services/driverService'
 
 export default function Trips() {
   const [trips, setTrips] = useState([])
-  const [vehicles, setVehicles] = useState([])
+  const [allVehicles, setAllVehicles] = useState([])
+  const [availableVehicles, setAvailableVehicles] = useState([])
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -22,17 +23,27 @@ export default function Trips() {
   // Selection state for Stepper
   const [selectedTrip, setSelectedTrip] = useState(null)
 
-  const fetchData = async () => {
+  const isLicenseExpired = (expiryString) => {
+    if (!expiryString) return true
+    const expiry = new Date(expiryString)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return expiry < today
+  }
+
+  const fetchData = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const [tripsData, vehiclesData, driversData] = await Promise.all([
+      const [tripsData, allVehData, availVehData, driversData] = await Promise.all([
         getTrips(),
         getVehicles(),
+        getAvailableVehicles(),
         getDrivers()
       ])
       setTrips(tripsData)
-      setVehicles(vehiclesData)
+      setAllVehicles(allVehData)
+      setAvailableVehicles(availVehData)
       setDrivers(driversData)
 
       // Keep selected trip reference fresh if it exists
@@ -46,7 +57,7 @@ export default function Trips() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedTrip])
 
   useEffect(() => {
     fetchData()
@@ -56,6 +67,13 @@ export default function Trips() {
   const handleCreateTrip = async (e) => {
     e.preventDefault()
     setFormError('')
+
+    const currentVeh = availableVehicles.find(v => v.id === Number(vehicleId))
+    if (currentVeh && Number(cargoWeight) > currentVeh.capacityKg) {
+      const excess = Number(cargoWeight) - currentVeh.capacityKg
+      setFormError(`Capacity exceeded by ${excess} kg — dispatch blocked`)
+      return
+    }
 
     try {
       const newTrip = await createTrip({
@@ -86,15 +104,31 @@ export default function Trips() {
     }
   }
 
+  const handleDispatchTrip = async (tripId) => {
+    try {
+      await dispatchTrip(tripId)
+      
+      // Update local state directly for responsive feedback
+      setTrips(prevTrips => prevTrips.map(t => t.id === tripId ? { ...t, status: 'Dispatched' } : t))
+      setSelectedTrip(prev => prev && prev.id === tripId ? { ...prev, status: 'Dispatched' } : prev)
+      
+      // Fetch fresh data in background
+      fetchData()
+    } catch (err) {
+      console.error(err)
+      setError(err.response?.data?.message || 'Failed to dispatch trip')
+    }
+  }
+
   const handleStatusTransition = async (tripId, nextStatus) => {
     try {
       await updateTripStatus(tripId, nextStatus)
       
-      // Update local state directly to feel fast
+      // Update local state directly
       setTrips(prevTrips => prevTrips.map(t => t.id === tripId ? { ...t, status: nextStatus } : t))
       setSelectedTrip(prev => prev && prev.id === tripId ? { ...prev, status: nextStatus } : prev)
       
-      // Fetch fresh data in background to ensure sync
+      // Fetch fresh data in background
       fetchData()
     } catch (err) {
       console.error(err)
@@ -102,8 +136,10 @@ export default function Trips() {
     }
   }
 
-  const availableVehicles = vehicles
-  const availableDrivers = drivers
+  // Filter drivers for the dropdown: Available and non-expired license
+  const formAvailableDrivers = drivers.filter(
+    d => d.status === 'Available' && !isLicenseExpired(d.licenseExpiry)
+  )
 
   // Group trips by status for the Live Board
   const statuses = ['Draft', 'Dispatched', 'Completed', 'Cancelled']
@@ -133,6 +169,36 @@ export default function Trips() {
         return 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
     }
   }
+
+  // Live Inline Capacity Validation for the Create form
+  const selectedFormVeh = availableVehicles.find(v => v.id === Number(vehicleId))
+  const isFormOverCapacity = selectedFormVeh && Number(cargoWeight) > selectedFormVeh.capacityKg
+  const formCapacityExcess = selectedFormVeh ? Math.max(0, Number(cargoWeight) - selectedFormVeh.capacityKg) : 0
+
+  // Validation checks for Dispatching the Selected Trip
+  const assignedVeh = allVehicles.find(v => v.id === selectedTrip?.vehicleId)
+  const assignedDriver = drivers.find(d => d.id === selectedTrip?.driverId)
+  const vehNotAvail = assignedVeh && assignedVeh.status !== 'Available'
+  const driverNotAvail = assignedDriver && assignedDriver.status !== 'Available'
+  const driverExpired = assignedDriver && isLicenseExpired(assignedDriver.licenseExpiry)
+  const isTripOverCapacity = assignedVeh && selectedTrip?.cargoWeightKg > assignedVeh.capacityKg
+  const tripCapacityExcess = assignedVeh ? Math.max(0, selectedTrip.cargoWeightKg - assignedVeh.capacityKg) : 0
+
+  const dispatchValidationMessages = []
+  if (isTripOverCapacity) {
+    dispatchValidationMessages.push(`Capacity exceeded by ${tripCapacityExcess}kg — dispatch blocked`)
+  }
+  if (vehNotAvail) {
+    dispatchValidationMessages.push(`Assigned vehicle is not Available (current status: ${assignedVeh?.status || 'Unknown'})`)
+  }
+  if (driverNotAvail) {
+    dispatchValidationMessages.push(`Assigned driver is not Available (current status: ${assignedDriver?.status || 'Unknown'})`)
+  }
+  if (driverExpired) {
+    dispatchValidationMessages.push('Assigned driver license is expired')
+  }
+
+  const isDispatchDisabled = dispatchValidationMessages.length > 0
 
   return (
     <div className="space-y-6">
@@ -192,10 +258,10 @@ export default function Trips() {
                 onChange={(e) => setVehicleId(e.target.value)}
                 className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange"
               >
-                <option value="">Select a Vehicle</option>
+                <option value="">Select an Available Vehicle</option>
                 {availableVehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.name} ({vehicle.regNo}) - {vehicle.status}
+                    {vehicle.name} ({vehicle.regNo}) - Max: {vehicle.capacityKg}kg
                   </option>
                 ))}
               </select>
@@ -209,10 +275,10 @@ export default function Trips() {
                 onChange={(e) => setDriverId(e.target.value)}
                 className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange"
               >
-                <option value="">Select a Driver</option>
-                {availableDrivers.map((driver) => (
+                <option value="">Select an Available Driver</option>
+                {formAvailableDrivers.map((driver) => (
                   <option key={driver.id} value={driver.id}>
-                    {driver.name} - {driver.status}
+                    {driver.name} (Score: {driver.safetyScore})
                   </option>
                 ))}
               </select>
@@ -246,9 +312,22 @@ export default function Trips() {
               </div>
             </div>
 
+            {/* Inline Capacity Warning for Form */}
+            {isFormOverCapacity && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400">
+                ⚠️ Capacity exceeded by {formCapacityExcess}kg — dispatch blocked
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full rounded-lg bg-transit-orange py-2.5 text-sm font-semibold text-white transition-colors hover:bg-transit-orange-hover"
+              disabled={isFormOverCapacity}
+              className={[
+                'w-full rounded-lg py-2.5 text-sm font-semibold text-white transition-colors',
+                isFormOverCapacity 
+                  ? 'bg-gray-600 cursor-not-allowed opacity-60' 
+                  : 'bg-transit-orange hover:bg-transit-orange-hover'
+              ].join(' ')}
             >
               Create Trip
             </button>
@@ -328,6 +407,18 @@ export default function Trips() {
                   </div>
                 </div>
 
+                {/* Dispatch validation errors rendering */}
+                {selectedTrip.status === 'Draft' && dispatchValidationMessages.length > 0 && (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 space-y-1">
+                    <span className="font-bold block">⚠️ Cannot Dispatch Trip:</span>
+                    <ul className="list-disc pl-4 space-y-0.5 text-xs">
+                      {dispatchValidationMessages.map((msg, i) => (
+                        <li key={i}>{msg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {/* Transition Action Buttons */}
                 <div className="pt-6 flex gap-3 border-t border-transit-dark-border justify-end">
                   {selectedTrip.status === 'Draft' && (
@@ -339,8 +430,14 @@ export default function Trips() {
                         Cancel Trip
                       </button>
                       <button
-                        onClick={() => handleStatusTransition(selectedTrip.id, 'Dispatched')}
-                        className="rounded-lg bg-transit-orange px-4 py-2 text-xs font-semibold text-white hover:bg-transit-orange-hover transition-colors"
+                        onClick={() => handleDispatchTrip(selectedTrip.id)}
+                        disabled={isDispatchDisabled}
+                        className={[
+                          'rounded-lg px-4 py-2 text-xs font-semibold text-white transition-all duration-200',
+                          isDispatchDisabled
+                            ? 'bg-gray-600 opacity-55 cursor-not-allowed'
+                            : 'bg-transit-orange hover:bg-transit-orange-hover'
+                        ].join(' ')}
                       >
                         Dispatch Trip
                       </button>

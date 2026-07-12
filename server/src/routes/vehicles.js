@@ -18,6 +18,20 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 })
 
+// GET /api/vehicles/available - Fetch all available vehicles (protected)
+router.get('/available', authMiddleware, async (req, res) => {
+  try {
+    const vehicles = await prisma.vehicle.findMany({
+      where: { status: 'Available' },
+      orderBy: { id: 'asc' },
+    })
+    return res.json(vehicles)
+  } catch (error) {
+    console.error('Failed to fetch available vehicles:', error)
+    return res.status(500).json({ message: 'Failed to fetch available vehicles' })
+  }
+})
+
 // POST /api/vehicles - Create a vehicle (FleetManager only)
 router.post('/', authMiddleware, requireRole('FleetManager'), async (req, res) => {
   const { regNo, name, type, capacityKg, odometer, acquisitionCost, status } = req.body

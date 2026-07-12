@@ -117,3 +117,24 @@ export const updateTripStatus = async (id, status) => {
     throw error
   }
 }
+
+export const dispatchTrip = async (id) => {
+  try {
+    const { data } = await api.put(`/api/trips/${id}/dispatch`)
+    return data
+  } catch (error) {
+    if (shouldFallbackToStub(error)) {
+      await delay(300)
+      const index = stubTrips.findIndex((t) => t.id === Number(id))
+      if (index === -1) {
+        throw new Error('Trip not found')
+      }
+      stubTrips[index] = {
+        ...stubTrips[index],
+        status: 'Dispatched',
+      }
+      return stubTrips[index]
+    }
+    throw error
+  }
+}

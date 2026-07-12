@@ -78,6 +78,19 @@ export const getVehicles = async () => {
   }
 }
 
+export const getAvailableVehicles = async () => {
+  try {
+    const { data } = await api.get('/api/vehicles/available')
+    return data
+  } catch (error) {
+    if (shouldFallbackToStub(error)) {
+      await delay(300)
+      return stubVehicles.filter(v => v.status === 'Available')
+    }
+    throw error
+  }
+}
+
 export const createVehicle = async (payload) => {
   try {
     const { data } = await api.post('/api/vehicles', payload)
