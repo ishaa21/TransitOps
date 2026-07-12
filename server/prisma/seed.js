@@ -213,6 +213,74 @@ async function main() {
 
   console.log(`Seeded ${trips.length} trips.`)
 
+  console.log('Seeding fuel logs...')
+  const fuelLogs = [
+    {
+      vehicleId: vehicleRecords[0]?.id,
+      liters: 120,
+      cost: 9600,
+      date: new Date('2026-06-01'),
+    },
+    {
+      vehicleId: vehicleRecords[1]?.id,
+      liters: 95,
+      cost: 7600,
+      date: new Date('2026-06-15'),
+    },
+    {
+      vehicleId: vehicleRecords[2]?.id,
+      liters: 110,
+      cost: 8800,
+      date: new Date('2026-06-20'),
+    },
+  ]
+
+  for (const log of fuelLogs) {
+    if (!log.vehicleId) continue
+    const existing = await prisma.fuelLog.findFirst({
+      where: {
+        vehicleId: log.vehicleId,
+        date: log.date,
+      },
+    })
+    if (!existing) {
+      await prisma.fuelLog.create({ data: log })
+    }
+  }
+
+  console.log('Seeding other expenses...')
+  const seededTrips = await prisma.trip.findMany()
+  const expenses = [
+    {
+      vehicleId: vehicleRecords[0]?.id,
+      tripId: seededTrips[0]?.id || null,
+      toll: 240,
+      misc: 500,
+      date: new Date('2026-06-01'),
+    },
+    {
+      vehicleId: vehicleRecords[1]?.id,
+      tripId: seededTrips[2]?.id || null,
+      toll: 150,
+      misc: 300,
+      date: new Date('2026-06-15'),
+    },
+  ]
+
+  for (const exp of expenses) {
+    if (!exp.vehicleId) continue
+    const existing = await prisma.expense.findFirst({
+      where: {
+        vehicleId: exp.vehicleId,
+        date: exp.date,
+        toll: exp.toll,
+      },
+    })
+    if (!existing) {
+      await prisma.expense.create({ data: exp })
+    }
+  }
+
   console.log('Seeding default user accounts...')
   const passwordHashDefault = await bcrypt.hash('password', 10)
   const passwordHashAlt = await bcrypt.hash('password123', 10)
