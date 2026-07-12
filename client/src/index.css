@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-transit-orange: #ea580c;
+  --color-transit-orange-hover: #c2410c;
+  --color-transit-dark: #0f1117;
+  --color-transit-dark-elevated: #1a1d27;
+  --color-transit-dark-border: #2a2f3d;
+  --color-transit-panel: #d1d5db;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100svh;
+}
