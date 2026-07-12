@@ -489,6 +489,20 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboard()
+
+    // Re-fetch when the window gains focus
+    const handleFocus = () => loadDashboard()
+    window.addEventListener('focus', handleFocus)
+
+    // Re-fetch periodically every 10 seconds (polling)
+    const interval = setInterval(() => {
+      loadDashboard()
+    }, 10000)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      clearInterval(interval)
+    }
   }, [loadDashboard])
 
   const filterOptions = useMemo(

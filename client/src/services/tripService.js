@@ -129,6 +129,8 @@ export const dispatchTrip = async (id) => {
         ...stubTrips[index],
         status: 'Dispatched',
       }
+      _setStubVehicleStatus(stubTrips[index].vehicleId, 'OnTrip')
+      _setStubDriverStatus(stubTrips[index].driverId, 'OnTrip')
       return stubTrips[index]
     }
     throw error
@@ -145,11 +147,17 @@ export const completeTrip = async (id, { finalOdometer, fuelConsumedLiters }) =>
       const index = stubTrips.findIndex((t) => t.id === Number(id))
       if (index === -1) throw new Error('Trip not found')
       stubTrips[index] = { ...stubTrips[index], status: 'Completed' }
+      _setStubVehicleStatus(stubTrips[index].vehicleId, 'Available')
+      _setStubVehicleOdometer(stubTrips[index].vehicleId, finalOdometer)
+      _setStubDriverStatus(stubTrips[index].driverId, 'Available')
       return stubTrips[index]
     }
     throw error
   }
 }
+
+import { _setStubVehicleStatus, _setStubVehicleOdometer } from './vehicleService'
+import { _setStubDriverStatus } from './driverService'
 
 export const cancelDispatchedTrip = async (id) => {
   try {
@@ -161,8 +169,13 @@ export const cancelDispatchedTrip = async (id) => {
       const index = stubTrips.findIndex((t) => t.id === Number(id))
       if (index === -1) throw new Error('Trip not found')
       stubTrips[index] = { ...stubTrips[index], status: 'Cancelled' }
+      _setStubVehicleStatus(stubTrips[index].vehicleId, 'Available')
+      _setStubDriverStatus(stubTrips[index].driverId, 'Available')
       return stubTrips[index]
     }
     throw error
   }
 }
+
+// ─── Stub helpers for cross-service linking ──────────────────────────────────
+export const _getStubTrips = () => stubTrips

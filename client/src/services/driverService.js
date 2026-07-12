@@ -132,3 +132,10 @@ export const deleteDriver = async (id) => {
     throw error
   }
 }
+
+// ─── Stub helpers for cross-service linking ──────────────────────────────────
+export const _getStubDrivers = () => stubDrivers
+export const _setStubDriverStatus = (id, status) => {
+  const d = stubDrivers.find((x) => x.id === Number(id))
+  if (d) d.status = status
+}

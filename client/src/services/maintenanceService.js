@@ -56,6 +56,8 @@ export const getMaintenanceLogs = async () => {
   }
 }
 
+import { _getStubVehicles, _setStubVehicleStatus } from './vehicleService'
+
 // ─── POST /api/maintenance ────────────────────────────────────────────────────
 export const createMaintenanceLog = async (payload) => {
   try {
@@ -74,6 +76,7 @@ export const createMaintenanceLog = async (payload) => {
         status: 'Active',
       }
       stubLogs.unshift(newLog)
+      _setStubVehicleStatus(payload.vehicleId, 'InShop')
       return newLog
     }
     throw error
@@ -91,8 +94,21 @@ export const completeMaintenanceLog = async (id) => {
       const idx = stubLogs.findIndex((l) => l.id === id)
       if (idx === -1) throw new Error('Log not found')
       stubLogs[idx] = { ...stubLogs[idx], status: 'Completed' }
-      return stubLogs[idx]
+      
+      const v = _getStubVehicles().find((x) => x.id === Number(stubLogs[idx].vehicleId))
+      const isRetired = v && v.status === 'Retired'
+      const targetStatus = isRetired ? 'Retired' : 'Available'
+      
+      _setStubVehicleStatus(stubLogs[idx].vehicleId, targetStatus)
+      
+      return {
+        ...stubLogs[idx],
+        vehicleStatus: targetStatus
+      }
     }
     throw error
   }
 }
+
+// ─── Stub helpers for cross-service linking ──────────────────────────────────
+export const _getStubLogs = () => stubLogs

@@ -140,3 +140,14 @@ export const deleteVehicle = async (id) => {
     throw error
   }
 }
+
+// ─── Stub helpers for cross-service linking ──────────────────────────────────
+export const _getStubVehicles = () => stubVehicles
+export const _setStubVehicleStatus = (id, status) => {
+  const v = stubVehicles.find((x) => x.id === Number(id))
+  if (v) v.status = status
+}
+export const _setStubVehicleOdometer = (id, odometer) => {
+  const v = stubVehicles.find((x) => x.id === Number(id))
+  if (v) v.odometer = Number(odometer)
+}
