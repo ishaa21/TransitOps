@@ -342,6 +342,13 @@ export default function Trips() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Revenue (₹, optional)</label>
+                <input type="number" step="any" min="0" value={tripRevenue}
+                  onChange={(e) => setTripRevenue(e.target.value)} placeholder="e.g. 25000"
+                  className="w-full rounded-lg border border-transit-dark-border bg-transit-dark px-3 py-2 text-sm text-white outline-none focus:border-transit-orange" />
+              </div>
+
               {isFormOverCapacity && (
                 <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400">
                   ⚠️ Capacity exceeded by {formCapacityExcess} kg — dispatch blocked
